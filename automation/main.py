@@ -37,28 +37,46 @@ AUTHOR_NAME = "Soccer Daily Editorial"
 
 TARGET_PER_CATEGORY = 1 
 
-# --- MEMORY SYSTEM ---
+# --- MEMORY SYSTEM (FIXED FOR SEO LINKING) ---
 def load_link_memory():
     if not os.path.exists(MEMORY_FILE): return {}
     try:
         with open(MEMORY_FILE, 'r') as f: return json.load(f)
     except: return {}
 
-def save_link_to_memory(keyword, slug):
+def save_link_to_memory(title, slug):
+    """
+    Menyimpan JUDUL ASLI dan URL Slug.
+    Format: {"Judul Artikel Lengkap": "/articles/slug-nya"}
+    """
     os.makedirs(DATA_DIR, exist_ok=True)
     memory = load_link_memory()
-    clean_key = keyword.lower().strip()
-    memory[clean_key] = f"/articles/{slug}"
+    
+    # Simpan Judul sebagai Key agar AI bisa membacanya sebagai Anchor Text
+    memory[title] = f"/articles/{slug}"
+    
+    # Batasi memori agar tidak terlalu besar (Max 50 link terbaru)
+    if len(memory) > 50:
+        # Hapus item terlama (Python 3.7+ dicts are ordered)
+        memory = dict(list(memory.items())[-50:])
+        
     with open(MEMORY_FILE, 'w') as f: json.dump(memory, f, indent=2)
 
 def get_internal_links_context():
     memory = load_link_memory()
     items = list(memory.items())
-    if len(items) > 5:
-        items = random.sample(items, 5)
+    
+    if len(items) < 1:
+        return "No previous articles available yet."
+        
+    # Ambil 3 artikel acak dari memori untuk dijadikan rekomendasi
+    if len(items) > 3:
+        items = random.sample(items, 3)
+    
+    # Return dalam format JSON string agar AI paham strukturnya
     return json.dumps(dict(items))
 
-# --- ROBUST RSS FETCHER (ANTI-BLOCK) ---
+# --- ROBUST RSS FETCHER ---
 def fetch_rss_feed(url):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -75,17 +93,15 @@ def fetch_rss_feed(url):
         print(f"   ⚠️ Connection Error: {e}")
         return None
 
-# --- CLEANING FUNCTION (YAML SAFE) ---
+# --- CLEANING FUNCTION ---
 def clean_text(text):
     if not text: return ""
-    # Hapus markdown
     cleaned = text.replace("**", "").replace("__", "").replace("##", "")
-    # Ganti kutip dua (") dengan kutip satu (') agar tidak merusak Frontmatter
     cleaned = cleaned.replace('"', "'") 
     cleaned = cleaned.strip()
     return cleaned
 
-# --- DISCOVER-READY IMAGE ENGINE ---
+# --- IMAGE ENGINE ---
 def download_and_optimize_image(query, filename):
     clean_query = query.replace(" ", "+")
     image_url = f"https://tse2.mm.bing.net/th?q={clean_query}+football+match+action+photo&w=1280&h=720&c=7&rs=1&p=0"
@@ -131,7 +147,6 @@ def parse_ai_response(text):
         json_part = re.sub(r'```', '', json_part)
         data = json.loads(json_part)
         
-        # CLEANING DATA
         data['title'] = clean_text(data.get('title', ''))
         data['description'] = clean_text(data.get('description', ''))
         data['content'] = body_part
@@ -147,34 +162,37 @@ def get_groq_article_seo(title, summary, link, internal_links_map, target_catego
         "llama-3.1-8b-instant"
     ]
     
+    # --- STRICT PROMPT FOR INTERNAL LINKING ---
     system_prompt = f"""
     You are a Senior Football Analyst & SEO Expert for 'Soccer Daily'.
     TARGET CATEGORY: {target_category}
     
-    GOAL: Write a Deep-Dive Analysis article (1000+ words) that ranks #1 on Google.
+    GOAL: Write a Deep-Dive Analysis article (1000+ words) ranking #1 on Google.
     
-    OUTPUT FORMAT (JSON REQUIRED):
-    {{"title": "Clean Headline (NO MARKDOWN SYMBOLS)", "description": "Meta description (Max 155 chars)", "category": "{target_category}", "main_keyword": "Entity Name", "lsi_keywords": ["keyword1", "keyword2"]}}
+    OUTPUT FORMAT (JSON):
+    {{"title": "Clean Headline (NO MARKDOWN)", "description": "Meta description", "category": "{target_category}", "main_keyword": "Entity Name", "lsi_keywords": ["keyword1"]}}
     |||BODY_START|||
     [Markdown Content]
 
-    # RULES FOR TITLE:
-    - ABSOLUTELY NO MARKDOWN (**bold**) or QUOTES (") inside the JSON field.
-    - Make it punchy: "TACTICAL BREAKDOWN:", "REVEALED:"
-
-    # CONTENT STRATEGY (Also Read Logic):
-    1. **Introduction**: Start with a Hook. Bold the **Main Keyword**.
-    2. **Tactical Analysis**: Use professional terms.
-    3. **Key Stats**: Create a bullet list.
-    4. **🚀 Also Read Section**:
-       - INSERT THIS EXACTLY IN THE MIDDLE:
-       - "### 🚀 Also Read"
-       - Create 3 bullet points linking to: {internal_links_map}.
-    5. **Fan Sentiment**: Social media reaction.
-    6. **FAQ**: 3 Questions for Voice Search.
+    # INTERNAL LINKING STRATEGY (CRITICAL):
+    I have provided a JSON list of previous articles: {internal_links_map}
+    Key = Article Title, Value = URL Path.
     
-    # TONE:
-    - Authoritative, Opinionated, Insightful.
+    INSTRUCTION:
+    - In the middle of the article, create a section: "### 🚀 Also Read"
+    - Pick 3 articles from the list provided.
+    - YOU MUST USE THIS FORMAT:
+      * [Exact Title From JSON](URL_FROM_JSON)
+    - DO NOT make up fake URLs. DO NOT print the raw URL (https://...). Use proper Markdown Anchor Text.
+    - If the list is empty, skip this section.
+
+    # CONTENT STRUCTURE:
+    1. **Introduction**: Hook & Main Keyword (Bold).
+    2. **Tactical Analysis**: Professional terms.
+    3. **Key Stats**: Bullet list.
+    4. **🚀 Also Read Section** (See instructions above).
+    5. **Fan Sentiment**: Social reaction.
+    6. **FAQ**: 3 Q&A.
     """
 
     user_prompt = f"""
@@ -182,7 +200,7 @@ def get_groq_article_seo(title, summary, link, internal_links_map, target_catego
     Summary: {summary}
     Link: {link}
     
-    Write the article now. NO MARKDOWN IN TITLE.
+    Write now. Ensure "Also Read" links are clickable text, NOT raw URLs.
     """
 
     for api_key in GROQ_API_KEYS:
@@ -259,8 +277,6 @@ def main():
             # 3. Save
             date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S+00:00")
             
-            # --- FIX YAML ERROR ---
-            # Menggunakan json.dumps agar kutip ' di dalam kata (Women's) ter-escape dengan benar
             tags_list = data.get('lsi_keywords', [])
             if data.get('main_keyword'): tags_list.append(data['main_keyword'])
             tags_str = json.dumps(tags_list)
@@ -284,8 +300,10 @@ draft: false
 """
             with open(f"{CONTENT_DIR}/{filename}", "w", encoding="utf-8") as f: f.write(md)
             
-            if 'main_keyword' in data: 
-                save_link_to_memory(data['main_keyword'], slug)
+            # 4. MEMORY SAVE (FIX: SIMPAN JUDUL SEBAGAI KEY)
+            # Ini kunci agar "Also Read" berikutnya menampilkan judul yang benar
+            if 'title' in data: 
+                save_link_to_memory(data['title'], slug)
             
             print(f"   ✅ Published: {filename}")
             cat_success_count += 1
