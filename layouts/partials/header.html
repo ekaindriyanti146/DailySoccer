@@ -21,14 +21,13 @@
         </a>
 
         <!-- Desktop Navigation -->
-     <!-- Desktop Navigation -->
         <nav class="hidden lg:flex items-center space-x-6">
-            <!-- DAFTAR KATEGORI LENGKAP (Urutan bisa diubah sesuai selera) -->
+            <!-- DAFTAR KATEGORI LENGKAP -->
             {{ $allowed := slice "Premier League" "Champions League" "La Liga" "World" "Transfer News" }}
             
             {{ range $allowed }}
                 {{ $name := . }}
-                <!-- Trik: Pakai 'urlize' agar spasi jadi strip (US Politics -> us-politics) -->
+                <!-- Trik: Pakai 'urlize' agar spasi jadi strip -->
                 {{ $taxonomy := index $.Site.Taxonomies.categories ($name | urlize) }}
                 
                 <!-- Cek: Hanya munculkan jika ada artikelnya -->
@@ -41,12 +40,15 @@
             {{ end }}
         </nav>
 
-        <!-- Right Side: Watch Live Button -->
+        <!-- Right Side: Watch Live Button (UPDATED) -->
         <div class="flex items-center">
-            <button class="flex items-center gap-2 bg-transparent border border-gray-300 hover:border-news-red hover:text-news-red px-3 py-1.5 rounded-full transition group">
+            <!-- Perubahan: Menggunakan tag <a> dengan class yang sama persis seperti button sebelumnya -->
+            <a href="https://wwp.ailooe.com/redirect-zone/058f7788" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 bg-transparent border border-gray-300 hover:border-news-red hover:text-news-red px-3 py-1.5 rounded-full transition group cursor-pointer text-gray-800">
+                <!-- Titik merah berkedip (tetap ada) -->
                 <div class="w-2 h-2 bg-news-red rounded-full animate-pulse"></div>
+                <!-- Teks -->
                 <span class="text-xs font-bold uppercase tracking-wide">Watch Live</span>
-            </button>
+            </a>
         </div>
     </div>
 </header>
