@@ -170,7 +170,7 @@ def parse_ai_response(text, fallback_title, fallback_desc):
     }
 
 def get_groq_article_seo(title, summary, link, internal_links_block, target_category):
-    AVAILABLE_MODELS = ["llama-3.3-70b-versatile", "mixtral-8x7b-32768", "llama-3.1-8b-instant"]
+    AVAILABLE_MODELS = ["llama-3.3-70b-versatile"]
     selected_sources = ", ".join(random.sample(AUTHORITY_SOURCES, 3))
     
     system_prompt = f"""
@@ -205,9 +205,9 @@ def get_groq_article_seo(title, summary, link, internal_links_block, target_cate
     1. Executive Summary (Blockquote).
     2. Deep Dive Analysis (Unique H2).
     3. Mandatory Data Table (Unique H2).
-    4. **Read More Section** (Insert the block provided above).
+    4. **Read More** (Insert the block provided above).
     5. Quotes & Reaction (Unique H2).
-    6. External Authority Link (Source: {selected_sources}).
+    6. External_Authority_Link (Unique H2, Source: {selected_sources}).
     7. FAQ.
     """
 
