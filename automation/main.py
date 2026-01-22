@@ -171,7 +171,7 @@ def parse_ai_response(text, fallback_title, fallback_desc):
 
 def get_groq_article_seo(title, summary, link, internal_links_block, target_category):
     # DAFTAR MODEL (PRIORITAS + CADANGAN)
-    AVAILABLE_MODELS = ["llama-3.3-70b-versatile", "mixtral-8x7b-32768", "llama-3.1-8b-instant"]
+    AVAILABLE_MODELS = ["llama-3.3-70b-versatile"]
     selected_sources = ", ".join(random.sample(AUTHORITY_SOURCES, 3))
     
     system_prompt = f"""
