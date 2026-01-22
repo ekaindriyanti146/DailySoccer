@@ -29,19 +29,10 @@ CATEGORY_URLS = {
     "Tactical Analysis": "https://news.google.com/rss/search?q=football+tactical+analysis+prediction+preview+when:1d&hl=en-GB&gl=GB&ceid=GB:en"
 }
 
-# --- LIST SUMBER TERPERCAYA (SEO AUTHORITY) ---
-# Script akan memilih secara acak dari list ini agar link keluar bervariasi
+# --- AUTHORITY SOURCES (ROTATION) ---
 AUTHORITY_SOURCES = [
-    "Transfermarkt (for market values)",
-    "Sky Sports Football",
-    "The Athletic (Tactical Analysis)",
-    "Opta Analyst (Statistics)",
-    "WhoScored",
-    "BBC Sport",
-    "The Guardian Football",
-    "UEFA Official Site",
-    "FIFA Official Site",
-    "ESPN FC"
+    "Transfermarkt", "Sky Sports", "The Athletic", "Opta Analyst",
+    "WhoScored", "BBC Sport", "The Guardian", "UEFA Official", "ESPN FC"
 ]
 
 CONTENT_DIR = "content/articles"
@@ -62,17 +53,36 @@ def load_link_memory():
 def save_link_to_memory(title, slug):
     os.makedirs(DATA_DIR, exist_ok=True)
     memory = load_link_memory()
+    # Simpan Judul Bersih & Link Relatif
     memory[title] = f"/articles/{slug}"
+    # Keep last 50
     if len(memory) > 50:
         memory = dict(list(memory.items())[-50:])
     with open(MEMORY_FILE, 'w') as f: json.dump(memory, f, indent=2)
 
-def get_internal_links_context():
+# --- FIX UTAMA: PRE-FORMAT LINKS DI PYTHON ---
+def get_formatted_internal_links():
+    """
+    Python yang menyusun format link Markdown, BUKAN AI.
+    Ini menjamin link 100% hidup dan valid.
+    """
     memory = load_link_memory()
     items = list(memory.items())
-    if len(items) < 1: return "No previous articles available yet."
-    if len(items) > 5: items = random.sample(items, 5)
-    return json.dumps(dict(items))
+    
+    if not items:
+        return "" # Kosong jika belum ada memori
+        
+    # Ambil 3 acak
+    if len(items) > 3:
+        items = random.sample(items, 3)
+    
+    # RAKIT LINK DI SINI (Python Logic)
+    # Output: * [Judul Artikel](/articles/slug)
+    formatted_links = []
+    for title, url in items:
+        formatted_links.append(f"* [{title}]({url})")
+        
+    return "\n".join(formatted_links)
 
 # --- RSS FETCHER ---
 def fetch_rss_feed(url):
@@ -86,7 +96,7 @@ def fetch_rss_feed(url):
         return feedparser.parse(response.content)
     except: return None
 
-# --- CLEANING FUNCTION ---
+# --- CLEANING ---
 def clean_text(text):
     if not text: return ""
     cleaned = text.replace("**", "").replace("__", "").replace("##", "")
@@ -98,28 +108,22 @@ def clean_text(text):
 def download_and_optimize_image(query, filename):
     clean_query = query.replace(" ", "+")
     image_url = f"https://tse2.mm.bing.net/th?q={clean_query}+football+match+action+photo&w=1280&h=720&c=7&rs=1&p=0"
-    
     print(f"      🔍 Fetching High-Res Image: {query}...")
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'}
         response = requests.get(image_url, headers=headers, timeout=20)
-        
         if response.status_code == 200:
             if "image" not in response.headers.get("content-type", ""): return False
-
             img = Image.open(BytesIO(response.content))
             img = img.convert("RGB")
-            
             width, height = img.size
             img = img.crop((width*0.1, height*0.1, width*0.9, height*0.9)) 
             img = img.resize((1200, 675), Image.Resampling.LANCZOS)
-            
             img = ImageOps.mirror(img) 
             enhancer = ImageEnhance.Sharpness(img)
             img = enhancer.enhance(1.4)
             enhancer_col = ImageEnhance.Color(img)
             img = enhancer_col.enhance(1.1)
-            
             output_path = f"{IMAGE_DIR}/{filename}"
             img.save(output_path, "JPEG", quality=92, optimize=True)
             return True
@@ -142,7 +146,7 @@ def parse_ai_response(text, fallback_title, fallback_desc):
             data['content'] = body_part
             return data
     except Exception as e:
-        print(f"      ⚠️ JSON Parse Warning: {e}. Using Fallback.")
+        print(f"      ⚠️ JSON Parse Warning. Using Fallback.")
     
     clean_body = re.sub(r'\{.*\}', '', text, flags=re.DOTALL).replace("|||BODY_START|||", "").strip()
     return {
@@ -155,18 +159,17 @@ def parse_ai_response(text, fallback_title, fallback_desc):
         "content": clean_body
     }
 
-def get_groq_article_seo(title, summary, link, internal_links_map, target_category):
-    AVAILABLE_MODELS = ["llama-3.3-70b-versatile"]
+def get_groq_article_seo(title, summary, link, internal_links_block, target_category):
+    AVAILABLE_MODELS = ["llama-3.3-70b-versatile", "mixtral-8x7b-32768", "llama-3.1-8b-instant"]
     
-    # --- PILIH 3 SUMBER EKSTERNAL SECARA ACAK ---
-    # Ini agar artikel tidak melulu link ke BBC
     selected_sources = ", ".join(random.sample(AUTHORITY_SOURCES, 3))
     
+    # --- PROMPT ANTI-GAGAL LINK ---
     system_prompt = f"""
     You are Dave Harsya, a Senior Football Analyst for 'Soccer Daily'.
     TARGET CATEGORY: {target_category}
     
-    GOAL: Write a 1200+ word article with UNIQUE HEADERS & DIVERSE SOURCES.
+    GOAL: Write a 1200+ word article with UNIQUE HEADERS.
     
     OUTPUT FORMAT (JSON):
     {{
@@ -181,22 +184,27 @@ def get_groq_article_seo(title, summary, link, internal_links_map, target_catego
     [Markdown Content]
 
     # RULES:
-    - NO GENERIC HEADERS. Use creative sub-headlines.
+    - NO GENERIC HEADERS (e.g. "Introduction"). Use creative H2 titles.
     - NO EMOJIS.
     
-    # EXTERNAL LINKING STRATEGY (CRITICAL):
-    - Do NOT always link to BBC.
-    - Select ONE most relevant source from this list: [{selected_sources}].
-    - Example: "According to recent data from [Source Name](URL)..."
-    - The link must be natural within the text.
+    # INTERNAL LINKING INSTRUCTION (CRITICAL):
+    I have pre-formatted the 'Also Read' links for you. 
+    IF the following block is NOT empty, you MUST insert it exactly as is in the middle of the article:
+    
+    BLOCK START:
+    ### Read More
+    {internal_links_block}
+    BLOCK END.
+    
+    (If the block above is empty, do not create the 'Read More' section).
 
     # STRUCTURE:
-    1. Exec Summary (Blockquote).
-    2. Deep Dive Analysis.
-    3. Mandatory Data Table.
-    4. Also Read: {internal_links_map}
-    5. Quotes & Reaction.
-    6. External Authority Link (See rule above).
+    1. Executive Summary (Blockquote).
+    2. Deep Dive Analysis (Unique H2).
+    3. Mandatory Data Table (Unique H2).
+    4. **Read More Section** (Insert the block provided above).
+    5. Quotes & Reaction (Unique H2).
+    6. External Authority Link (Source: {selected_sources}).
     7. FAQ.
     """
 
@@ -205,7 +213,7 @@ def get_groq_article_seo(title, summary, link, internal_links_map, target_catego
     Summary: {summary}
     Link: {link}
     
-    Write the 1200-word masterpiece now. Ensure varied sources.
+    Write the 1200-word masterpiece now. Don't forget to PASTE the Read More block.
     """
 
     for api_key in GROQ_API_KEYS:
@@ -219,7 +227,7 @@ def get_groq_article_seo(title, summary, link, internal_links_map, target_catego
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt}
                     ],
-                    temperature=0.75, 
+                    temperature=0.7, 
                     max_tokens=7500,
                 )
                 return completion.choices[0].message.content
@@ -253,8 +261,11 @@ def main():
 
             print(f"   🔥 Processing: {clean_title[:40]}...")
             
-            context = get_internal_links_context()
-            raw_response = get_groq_article_seo(clean_title, entry.summary, entry.link, context, category_name)
+            # 1. SIAPKAN LINK DI PYTHON (BUKAN DI AI)
+            links_block = get_formatted_internal_links()
+            
+            # 2. KIRIM LINK YANG SUDAH JADI KE AI
+            raw_response = get_groq_article_seo(clean_title, entry.summary, entry.link, links_block, category_name)
             
             if not raw_response: continue
 
