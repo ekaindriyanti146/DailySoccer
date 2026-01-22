@@ -20,6 +20,7 @@ if not GROQ_API_KEYS:
     exit(1)
 
 # --- CATEGORY RSS FEED (GLOBAL SOURCES) ---
+# Tips: Google News RSS sering memblokir bot, kita akan menanganinya di fungsi fetch_rss_feed
 CATEGORY_URLS = {
     "Transfer News": "https://news.google.com/rss/search?q=football+transfer+news+Fabrizio+Romano+here+we+go+when:1d&hl=en-GB&gl=GB&ceid=GB:en",
     "Premier League": "https://news.google.com/rss/search?q=Premier+League+news+match+result+analysis+when:1d&hl=en-GB&gl=GB&ceid=GB:en",
@@ -55,15 +56,40 @@ def get_internal_links_context():
     memory = load_link_memory()
     items = list(memory.items())
     if len(items) > 5:
-        # Ambil 5 link acak untuk bahan "Also Read"
         items = random.sample(items, 5)
     return json.dumps(dict(items))
 
-# --- CLEANING FUNCTION (Fix Judul Bintang-Bintang) ---
+# --- ROBUST RSS FETCHER (ANTI-BLOCK) ---
+def fetch_rss_feed(url):
+    """
+    Mengambil RSS dengan Header Browser agar tidak diblokir Google/Server News.
+    """
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Referer': 'https://www.google.com/'
+    }
+    
+    try:
+        # Request manual pakai 'requests' dulu
+        response = requests.get(url, headers=headers, timeout=15)
+        
+        # Cek status code
+        if response.status_code != 200:
+            print(f"   ⚠️ Status Code Error: {response.status_code}")
+            return None
+            
+        # Parse contentnya menggunakan feedparser
+        feed = feedparser.parse(response.content)
+        return feed
+    except Exception as e:
+        print(f"   ⚠️ Connection Error: {e}")
+        return None
+
+# --- CLEANING FUNCTION ---
 def clean_text(text):
-    """Membersihkan simbol markdown dari Judul/Deskripsi"""
     if not text: return ""
-    # Hapus bold markdown (**text**), italic (*text*), dan hash (#)
     cleaned = text.replace("**", "").replace("__", "").replace("##", "")
     cleaned = cleaned.strip().strip('"').strip("'")
     return cleaned
@@ -85,12 +111,10 @@ def download_and_optimize_image(query, filename):
             img = Image.open(BytesIO(response.content))
             img = img.convert("RGB")
             
-            # Smart Crop & Resize
             width, height = img.size
             img = img.crop((width*0.1, height*0.1, width*0.9, height*0.9)) 
             img = img.resize((1200, 675), Image.Resampling.LANCZOS)
             
-            # Enhance
             img = ImageOps.mirror(img) 
             enhancer = ImageEnhance.Sharpness(img)
             img = enhancer.enhance(1.4)
@@ -116,7 +140,7 @@ def parse_ai_response(text):
         json_part = re.sub(r'```', '', json_part)
         data = json.loads(json_part)
         
-        # --- FIX PENTING: BERSIHKAN JUDUL DARI MARKDOWN ---
+        # BERSIHKAN JUDUL
         data['title'] = clean_text(data.get('title', ''))
         data['description'] = clean_text(data.get('description', ''))
         
@@ -127,13 +151,13 @@ def parse_ai_response(text):
         return None
 
 def get_groq_article_seo(title, summary, link, internal_links_map, target_category):
+    # Smart Fallback Models
     AVAILABLE_MODELS = [
         "llama-3.3-70b-versatile", 
         "mixtral-8x7b-32768", 
         "llama-3.1-8b-instant"
     ]
     
-    # --- STRATEGI SEO 2026: E-E-A-T & CONTENT CLUSTER ---
     system_prompt = f"""
     You are a Senior Football Analyst & SEO Expert for 'Soccer Daily'.
     TARGET CATEGORY: {target_category}
@@ -149,20 +173,20 @@ def get_groq_article_seo(title, summary, link, internal_links_map, target_catego
     - ABSOLUTELY NO MARKDOWN (**bold**, *italic*) in the JSON 'title' field. Plain text only.
     - Make it punchy: "TACTICAL BREAKDOWN:", "REVEALED:", "WHY [Player] FAILED:"
 
-    # CONTENT STRATEGY (The "Also Read" Logic):
+    # CONTENT STRATEGY (Also Read Logic):
     1. **Introduction**: Start with a Hook. Bold the **Main Keyword**.
-    2. **Tactical Analysis**: Use professional terms (Half-spaces, xG, High-line, Pivot). Don't just report, ANALYZE.
-    3. **Key Stats**: Create a bullet list of key performance data.
+    2. **Tactical Analysis**: Use professional terms (Half-spaces, xG, High-line, Pivot).
+    3. **Key Stats**: Create a bullet list.
     4. **🚀 Also Read Section**:
-       - INSERT THIS EXACTLY IN THE MIDDLE OF THE ARTICLE:
+       - INSERT THIS EXACTLY IN THE MIDDLE:
        - "### 🚀 Also Read"
        - Create 3 bullet points linking to: {internal_links_map}.
-       - Format: "* [Anchor Text related to link](/articles/slug)"
-    5. **Fan Sentiment**: What are the fans saying on social media?
-    6. **FAQ Section**: 3 Questions & Answers for Voice Search Snippets.
+       - Format: "* [Related Headline](/articles/slug)"
+    5. **Fan Sentiment**: Social media reaction.
+    6. **FAQ**: 3 Questions for Voice Search.
     
     # TONE:
-    - Authoritative, Opinionated, Insightful. Like a Sky Sports Pundit.
+    - Authoritative, Opinionated, Insightful.
     """
 
     user_prompt = f"""
@@ -170,7 +194,7 @@ def get_groq_article_seo(title, summary, link, internal_links_map, target_catego
     Summary: {summary}
     Link: {link}
     
-    Write the article now. Remember: NO MARKDOWN IN THE JSON TITLE.
+    Write the article now. NO MARKDOWN IN TITLE.
     """
 
     for api_key in GROQ_API_KEYS:
@@ -208,14 +232,12 @@ def main():
 
     for category_name, rss_url in CATEGORY_URLS.items():
         print(f"\n📡 Fetching Category: {category_name}...")
-        try:
-            feed = feedparser.parse(rss_url)
-        except Exception as e:
-            print(f"   ⚠️ RSS Error: {e}")
-            continue
         
-        if not feed.entries:
-            print(f"   ⚠️ Empty.")
+        # PANGGIL FUNGSI FETCHER BARU
+        feed = fetch_rss_feed(rss_url)
+        
+        if not feed or not feed.entries:
+            print(f"   ⚠️ Empty or Blocked.")
             continue
 
         cat_success_count = 0
