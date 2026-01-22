@@ -3,9 +3,9 @@ languageCode = "en-us"
 title = "US Daily Context"
 # theme = "neo-news"
 
-[author]
-  name = "US News Desk"
-  email = "bot@usnews.ai"
+[params.author]
+  name = "Dave Harsya (Senior Analyst)"
+  email = "contact@soccerdaily.com"
 
 [markup]
   [markup.goldmark]
