@@ -156,7 +156,7 @@ def parse_ai_response(text, fallback_title, fallback_desc):
     }
 
 def get_groq_article_seo(title, summary, link, internal_links_map, target_category):
-    AVAILABLE_MODELS = ["llama-3.3-70b-versatile", "mixtral-8x7b-32768", "llama-3.1-8b-instant"]
+    AVAILABLE_MODELS = ["llama-3.3-70b-versatile"]
     
     # --- PILIH 3 SUMBER EKSTERNAL SECARA ACAK ---
     # Ini agar artikel tidak melulu link ke BBC
