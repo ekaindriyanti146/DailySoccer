@@ -33,11 +33,13 @@ CONTENT_DIR = "content/articles"
 IMAGE_DIR = "static/images"
 DATA_DIR = "automation/data"
 MEMORY_FILE = f"{DATA_DIR}/link_memory.json"
-AUTHOR_NAME = "Soccer Daily Editorial"
+
+# --- E-E-A-T UPGRADE: Nama Penulis Spesifik ---
+AUTHOR_NAME = "Dave Harsya (Senior Analyst)"
 
 TARGET_PER_CATEGORY = 1 
 
-# --- MEMORY SYSTEM (FIXED FOR SEO LINKING) ---
+# --- MEMORY SYSTEM (SEO Linking) ---
 def load_link_memory():
     if not os.path.exists(MEMORY_FILE): return {}
     try:
@@ -45,53 +47,31 @@ def load_link_memory():
     except: return {}
 
 def save_link_to_memory(title, slug):
-    """
-    Menyimpan JUDUL ASLI dan URL Slug.
-    Format: {"Judul Artikel Lengkap": "/articles/slug-nya"}
-    """
     os.makedirs(DATA_DIR, exist_ok=True)
     memory = load_link_memory()
-    
-    # Simpan Judul sebagai Key agar AI bisa membacanya sebagai Anchor Text
     memory[title] = f"/articles/{slug}"
-    
-    # Batasi memori agar tidak terlalu besar (Max 50 link terbaru)
     if len(memory) > 50:
-        # Hapus item terlama (Python 3.7+ dicts are ordered)
         memory = dict(list(memory.items())[-50:])
-        
     with open(MEMORY_FILE, 'w') as f: json.dump(memory, f, indent=2)
 
 def get_internal_links_context():
     memory = load_link_memory()
     items = list(memory.items())
-    
-    if len(items) < 1:
-        return "No previous articles available yet."
-        
-    # Ambil 3 artikel acak dari memori untuk dijadikan rekomendasi
-    if len(items) > 3:
-        items = random.sample(items, 3)
-    
-    # Return dalam format JSON string agar AI paham strukturnya
+    if len(items) < 1: return "No previous articles available yet."
+    if len(items) > 5: items = random.sample(items, 5)
     return json.dumps(dict(items))
 
 # --- ROBUST RSS FETCHER ---
 def fetch_rss_feed(url):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Referer': 'https://www.google.com/'
     }
     try:
         response = requests.get(url, headers=headers, timeout=15)
-        if response.status_code != 200:
-            print(f"   ⚠️ Status Code Error: {response.status_code}")
-            return None
+        if response.status_code != 200: return None
         return feedparser.parse(response.content)
-    except Exception as e:
-        print(f"   ⚠️ Connection Error: {e}")
-        return None
+    except: return None
 
 # --- CLEANING FUNCTION ---
 def clean_text(text):
@@ -101,13 +81,12 @@ def clean_text(text):
     cleaned = cleaned.strip()
     return cleaned
 
-# --- IMAGE ENGINE ---
+# --- DISCOVER-READY IMAGE ENGINE ---
 def download_and_optimize_image(query, filename):
     clean_query = query.replace(" ", "+")
     image_url = f"https://tse2.mm.bing.net/th?q={clean_query}+football+match+action+photo&w=1280&h=720&c=7&rs=1&p=0"
     
     print(f"      🔍 Fetching High-Res Image: {query}...")
-    
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'}
         response = requests.get(image_url, headers=headers, timeout=20)
@@ -120,7 +99,7 @@ def download_and_optimize_image(query, filename):
             
             width, height = img.size
             img = img.crop((width*0.1, height*0.1, width*0.9, height*0.9)) 
-            img = img.resize((1200, 675), Image.Resampling.LANCZOS)
+            img = img.resize((1200, 675), Image.Resampling.LANCZOS) # 16:9 Perfect
             
             img = ImageOps.mirror(img) 
             enhancer = ImageEnhance.Sharpness(img)
@@ -131,12 +110,10 @@ def download_and_optimize_image(query, filename):
             output_path = f"{IMAGE_DIR}/{filename}"
             img.save(output_path, "JPEG", quality=92, optimize=True)
             return True
-    except Exception as e:
-        print(f"      ⚠️ Image Fail: {e}")
-    
+    except: pass
     return False
 
-# --- AI WRITER ENGINE ---
+# --- AI WRITER ENGINE (100/100 SEO STRATEGY) ---
 def parse_ai_response(text):
     try:
         parts = text.split("|||BODY_START|||")
@@ -156,43 +133,39 @@ def parse_ai_response(text):
         return None
 
 def get_groq_article_seo(title, summary, link, internal_links_map, target_category):
-    AVAILABLE_MODELS = [
-        "llama-3.3-70b-versatile", 
-        "mixtral-8x7b-32768", 
-        "llama-3.1-8b-instant"
-    ]
+    AVAILABLE_MODELS = ["llama-3.3-70b-versatile", "mixtral-8x7b-32768", "llama-3.1-8b-instant"]
     
-    # --- STRICT PROMPT FOR INTERNAL LINKING ---
+    # --- PROMPT LEVEL DEWA (DATA DRIVEN) ---
     system_prompt = f"""
-    You are a Senior Football Analyst & SEO Expert for 'Soccer Daily'.
+    You are Dave Harsya, a Senior Football Analyst for 'Soccer Daily'.
     TARGET CATEGORY: {target_category}
     
-    GOAL: Write a Deep-Dive Analysis article (1000+ words) ranking #1 on Google.
+    GOAL: Write a Data-Driven Analysis (1000+ words) ranking #1 on Google.
     
     OUTPUT FORMAT (JSON):
-    {{"title": "Clean Headline (NO MARKDOWN)", "description": "Meta description", "category": "{target_category}", "main_keyword": "Entity Name", "lsi_keywords": ["keyword1"]}}
+    {{"title": "Punchy Headline (NO MARKDOWN)", "description": "SEO meta description", "category": "{target_category}", "main_keyword": "Entity Name", "lsi_keywords": ["keyword1"]}}
     |||BODY_START|||
     [Markdown Content]
 
-    # INTERNAL LINKING STRATEGY (CRITICAL):
-    I have provided a JSON list of previous articles: {internal_links_map}
-    Key = Article Title, Value = URL Path.
+    # CONTENT ARCHITECTURE (STRICT):
+    1. **The Lead**: Hook the reader. Bold the **Main Keyword** in the first sentence.
+    2. **Tactical Breakdown**: Use headers (H2). Discuss formation, xG, pressing traps.
+    3. **📊 Key Stats (MANDATORY TABLE)**:
+       - You MUST generate a Markdown Table here.
+       - Example: Compare Player Stats, League Table snapshot, or H2H History.
+       - Do NOT use bullet points here. Use a real Table.
+    4. **🚀 Also Read**:
+       - "### 🚀 Also Read"
+       - List 3 links from: {internal_links_map}
+       - Format: "* [Title](URL)"
+    5. **Expert Insight**: Quote a manager or player (simulated).
+    6. **External Authority**:
+       - Include ONE link to a high-authority site (Transfermarkt, Whoscored, or BBC Sport) as a reference for stats.
+       - Make it natural. Example: "According to data from [Transfermarkt](https://www.transfermarkt.com)..."
+    7. **FAQ**: 3 Questions for Voice Search schema.
     
-    INSTRUCTION:
-    - In the middle of the article, create a section: "### 🚀 Also Read"
-    - Pick 3 articles from the list provided.
-    - YOU MUST USE THIS FORMAT:
-      * [Exact Title From JSON](URL_FROM_JSON)
-    - DO NOT make up fake URLs. DO NOT print the raw URL (https://...). Use proper Markdown Anchor Text.
-    - If the list is empty, skip this section.
-
-    # CONTENT STRUCTURE:
-    1. **Introduction**: Hook & Main Keyword (Bold).
-    2. **Tactical Analysis**: Professional terms.
-    3. **Key Stats**: Bullet list.
-    4. **🚀 Also Read Section** (See instructions above).
-    5. **Fan Sentiment**: Social reaction.
-    6. **FAQ**: 3 Q&A.
+    # TONE:
+    - Analytical, Objective, yet Engaging. No fluff.
     """
 
     user_prompt = f"""
@@ -200,7 +173,7 @@ def get_groq_article_seo(title, summary, link, internal_links_map, target_catego
     Summary: {summary}
     Link: {link}
     
-    Write now. Ensure "Also Read" links are clickable text, NOT raw URLs.
+    Write now. Remember: INCLUDE A MARKDOWN TABLE.
     """
 
     for api_key in GROQ_API_KEYS:
@@ -214,17 +187,12 @@ def get_groq_article_seo(title, summary, link, internal_links_map, target_catego
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt}
                     ],
-                    temperature=0.7,
+                    temperature=0.6, # Lebih rendah agar tabel data akurat
                     max_tokens=6500,
                 )
                 return completion.choices[0].message.content
-
-            except RateLimitError:
-                print(f"      ⚠️ Rate Limit ({model}). Switching...")
-                continue
-            except Exception as e:
-                print(f"      ⚠️ Error: {e}")
-                continue
+            except RateLimitError: continue
+            except Exception: continue
             
     return None
 
@@ -237,33 +205,25 @@ def main():
     total_generated = 0
 
     for category_name, rss_url in CATEGORY_URLS.items():
-        print(f"\n📡 Fetching Category: {category_name}...")
-        
+        print(f"\n📡 Fetching: {category_name}...")
         feed = fetch_rss_feed(rss_url)
-        
-        if not feed or not feed.entries:
-            print(f"   ⚠️ Empty or Blocked.")
-            continue
+        if not feed or not feed.entries: continue
 
         cat_success_count = 0
-        
         for entry in feed.entries:
-            if cat_success_count >= TARGET_PER_CATEGORY:
-                break
+            if cat_success_count >= TARGET_PER_CATEGORY: break
 
             clean_title = entry.title.split(" - ")[0]
             slug = slugify(clean_title, max_length=60, word_boundary=True)
             filename = f"{slug}.md"
 
-            if os.path.exists(f"{CONTENT_DIR}/{filename}"):
-                continue
+            if os.path.exists(f"{CONTENT_DIR}/{filename}"): continue
 
             print(f"   🔥 Processing: {clean_title[:40]}...")
             
             # 1. AI Text
             context = get_internal_links_context()
             raw_response = get_groq_article_seo(clean_title, entry.summary, entry.link, context, category_name)
-            
             if not raw_response: continue
 
             data = parse_ai_response(raw_response)
@@ -276,7 +236,6 @@ def main():
             
             # 3. Save
             date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S+00:00")
-            
             tags_list = data.get('lsi_keywords', [])
             if data.get('main_keyword'): tags_list.append(data['main_keyword'])
             tags_str = json.dumps(tags_list)
@@ -296,23 +255,18 @@ draft: false
 {data['content']}
 
 ---
-*Source: Analysis by Soccer Daily based on international reports and [Original Story]({entry.link}).*
+*Source: Analysis by {AUTHOR_NAME} based on international reports and [Original Story]({entry.link}).*
 """
             with open(f"{CONTENT_DIR}/{filename}", "w", encoding="utf-8") as f: f.write(md)
             
-            # 4. MEMORY SAVE (FIX: SIMPAN JUDUL SEBAGAI KEY)
-            # Ini kunci agar "Also Read" berikutnya menampilkan judul yang benar
-            if 'title' in data: 
-                save_link_to_memory(data['title'], slug)
+            if 'title' in data: save_link_to_memory(data['title'], slug)
             
             print(f"   ✅ Published: {filename}")
             cat_success_count += 1
             total_generated += 1
-            
-            print("   zzz... Cooling down 5s...")
             time.sleep(5)
 
-    print(f"\n🎉 DONE! Total generated: {total_generated}")
+    print(f"\n🎉 DONE! Total: {total_generated}")
 
 if __name__ == "__main__":
     main()
