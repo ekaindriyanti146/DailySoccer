@@ -8,8 +8,7 @@ import random
 from datetime import datetime
 from slugify import slugify
 from io import BytesIO
-from PIL import Image, ImageEnhance, ImageOps
-from duckduckgo_search import DDGS 
+from PIL import Image, ImageEnhance, ImageOps, ImageFilter
 from groq import Groq, APIError, RateLimitError, BadRequestError
 
 # --- CONFIGURATION ---
@@ -59,76 +58,91 @@ def get_internal_links_context():
         items = random.sample(items, 30)
     return json.dumps(dict(items))
 
-# --- REAL IMAGE ENGINE (STRICTLY NO AI) ---
+# --- GOOGLE DISCOVER IMAGE ENGINE ---
+def add_subtle_noise(img, intensity=0.02):
+    """
+    Menambahkan noise acak pada pixel agar Hash Gambar berubah total.
+    Penting untuk menghindari deteksi 'Duplicate Content' di Google Discover.
+    """
+    width, height = img.size
+    pixels = img.load()
+    
+    for x in range(width):
+        for y in range(height):
+            # Hanya ubah pixel secara acak (10% dari total pixel) agar cepat
+            if random.random() < 0.1:
+                r, g, b = pixels[x, y]
+                noise = random.randint(int(-255 * intensity), int(255 * intensity))
+                # Clamp values 0-255
+                r = max(0, min(255, r + noise))
+                g = max(0, min(255, g + noise))
+                b = max(0, min(255, b + noise))
+                pixels[x, y] = (r, g, b)
+    return img
+
 def download_and_optimize_image(query, filename):
     """
-    Search Real Image on DDG -> Download -> Crop Watermark -> Mirror -> Save.
-    NO AI GENERATION allowed.
+    Direct Stream + Discover Optimization (1200px, 16:9, Hash Busting).
     """
-    search_query = f"{query} soccer match action wallpaper 4k"
-    print(f"      🔍 Searching Real Image: {search_query}...")
+    clean_query = query.replace(" ", "+")
     
-    image_url = None
+    # URL Bing Direct Stream
+    # w=1280 & h=720 (Wajib HD untuk Discover)
+    image_url = f"https://tse2.mm.bing.net/th?q={clean_query}+football+match+photo&w=1280&h=720&c=7&rs=1&p=0"
     
-    # 1. SEARCH IMAGE (DuckDuckGo)
+    print(f"      🔍 Fetching Discover-Ready Image: {query}...")
+    
     try:
-        with DDGS() as ddgs:
-            results = list(ddgs.images(
-                keywords=search_query, 
-                region="wt-wt", 
-                safesearch="off", 
-                size="Wallpaper", # High Res only
-                type_image="photo", 
-                max_results=2
-            ))
-            if results:
-                image_url = results[0]['image']
-    except Exception as e:
-        print(f"      ⚠️ Search Error (Blocked/Network): {e}")
-        return False # Fail gracefully, will use default image
-
-    if not image_url:
-        print("      ❌ No image found.")
-        return False
-
-    # 2. DOWNLOAD & MODIFY
-    try:
-        print(f"      ⬇️ Downloading: {image_url[:40]}...")
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+        }
+        
         response = requests.get(image_url, headers=headers, timeout=20)
         
         if response.status_code == 200:
+            if "image" not in response.headers.get("content-type", ""):
+                print("      ❌ URL returned non-image content.")
+                return False
+
             img = Image.open(BytesIO(response.content))
             img = img.convert("RGB")
             
-            # --- MODIFICATION STEPS (Anti-Copyright) ---
+            # --- MODIFIKASI KHUSUS GOOGLE DISCOVER ---
             
-            # A. Smart Crop (Remove watermarks/tickers at edges)
+            # 1. Smart Crop (Buang 10% tepi untuk watermark)
             width, height = img.size
-            # Crop 10% from top/left/right, 15% from bottom
-            img = img.crop((width*0.1, height*0.1, width*0.9, height*0.85)) 
+            img = img.crop((width*0.1, height*0.1, width*0.9, height*0.9)) 
             
-            # B. Resize to HD & Mirroring (Flip Horizontal)
-            img = img.resize((1280, 720), Image.Resampling.LANCZOS)
+            # 2. Resize Wajib 1200x675 (Rasio 16:9 Sempurna)
+            # Discover minta lebar minimal 1200px. 
+            img = img.resize((1200, 675), Image.Resampling.LANCZOS)
+            
+            # 3. Mirroring (Anti-Duplicate Basic)
             img = ImageOps.mirror(img) 
             
-            # C. Enhance Quality (Sharpen & Color)
-            enhancer = ImageEnhance.Sharpness(img)
-            img = enhancer.enhance(1.4) # Sharpen
-            enhancer_col = ImageEnhance.Color(img)
-            img = enhancer_col.enhance(1.1) # Boost color slightly
+            # 4. Hash Busting (Anti-Duplicate Advanced)
+            # Tambahkan noise & ubah warna agar file dianggap "Original"
+            img = add_subtle_noise(img, intensity=0.05)
             
-            # D. Save (Strip Metadata)
+            enhancer = ImageEnhance.Sharpness(img)
+            img = enhancer.enhance(1.3) # Tajamkan
+            
+            enhancer_col = ImageEnhance.Color(img)
+            img = enhancer_col.enhance(1.1) # Warna lebih pop
+            
+            # 5. Save dengan Metadata Bersih
             output_path = f"{IMAGE_DIR}/{filename}"
-            img.save(output_path, "JPEG", quality=90, optimize=True)
+            img.save(output_path, "JPEG", quality=92, optimize=True)
             return True
+        else:
+            print(f"      ⚠️ Server status: {response.status_code}")
             
     except Exception as e:
-        print(f"      ⚠️ Processing Fail: {e}")
+        print(f"      ⚠️ Image Fail: {e}")
     
     return False
 
-# --- AI WRITER ENGINE (ENGLISH) ---
+# --- AI WRITER ENGINE ---
 def parse_ai_response(text):
     try:
         parts = text.split("|||BODY_START|||")
@@ -147,37 +161,29 @@ def parse_ai_response(text):
 def get_groq_article_seo(title, summary, link, internal_links_map, target_category):
     MODEL_NAME = "llama-3.3-70b-versatile"
     
-    # --- PROMPT IN ENGLISH (BRITISH PUNDIT STYLE) ---
     system_prompt = f"""
-    You are a Senior Football Pundit and Journalist for 'Soccer Daily'.
+    You are a Senior Football Pundit for 'Soccer Daily'.
     TARGET CATEGORY: {target_category}
     
-    TASK: Write a high-quality, engaging football news article (800-1000 words) in ENGLISH.
+    TASK: Write an engaging football news article (800-1000 words) in ENGLISH.
     
-    OUTPUT FORMAT (JSON REQUIRED):
+    OUTPUT FORMAT (JSON):
     {{"title": "Catchy Headline (Max 70 chars)", "description": "SEO Summary (Max 150 chars)", "category": "{target_category}", "main_keyword": "Main Player/Team Name"}}
     |||BODY_START|||
     [Markdown Content]
 
-    STYLE GUIDE:
-    1. **Tone**: Professional, passionate, and authoritative (British English preferred).
-    2. **Structure**:
-       - **Key Highlights** (Bullet points).
-       - **Introduction**: The Hook & 5W1H.
-       - **Tactical Analysis / Context**: Deep dive.
-       - **Stats**: Include relevant stats.
-       - **Quotes**: Reaction (Simulated).
-       - **Verdict**: What happens next?
-    3. **SEO**: Use internal links: {internal_links_map}.
-    4. **Originality**: Expand with expert analysis.
+    STYLE:
+    - Tone: Professional, passionate (British English).
+    - Structure: Highlights, Intro (5W1H), Analysis, Stats, Quotes, Verdict.
+    - SEO: Use internal links: {internal_links_map}.
     """
 
     user_prompt = f"""
-    Source News: {title}
+    Source: {title}
     Summary: {summary}
-    Original Link: {link}
+    Link: {link}
     
-    Write the article now.
+    Write now.
     """
 
     for index, api_key in enumerate(GROQ_API_KEYS):
@@ -213,11 +219,11 @@ def main():
         try:
             feed = feedparser.parse(rss_url)
         except Exception as e:
-            print(f"   ⚠️ Error fetching RSS: {e}")
+            print(f"   ⚠️ RSS Error: {e}")
             continue
         
         if not feed.entries:
-            print(f"   ⚠️ Empty/Skip.")
+            print(f"   ⚠️ Empty.")
             continue
 
         cat_success_count = 0
@@ -244,11 +250,10 @@ def main():
             data = parse_ai_response(raw_response)
             if not data: continue
 
-            # 2. Real Image Processing (NO AI GENERATION)
+            # 2. Image (Direct Stream + Discover Optimization)
             img_name = f"{slug}.jpg"
             has_img = download_and_optimize_image(data['main_keyword'], img_name)
             
-            # Jika gagal mencari gambar asli, gunakan default (Bukan AI)
             final_img = f"/images/{img_name}" if has_img else "/images/default-football.jpg"
             
             # 3. Save
@@ -279,9 +284,8 @@ draft: false
             cat_success_count += 1
             total_generated += 1
             
-            # Jeda agar tidak kena block DuckDuckGo
-            print("   zzz... Cooling down 10s...")
-            time.sleep(10)
+            print("   zzz... Cooling down 5s...")
+            time.sleep(5)
 
     print(f"\n🎉 DONE! Total generated: {total_generated}")
 
