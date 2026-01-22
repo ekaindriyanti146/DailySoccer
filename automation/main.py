@@ -19,7 +19,7 @@ if not GROQ_API_KEYS:
     print("❌ FATAL ERROR: Groq API Key is missing!")
     exit(1)
 
-# --- CATEGORY RSS FEED (ENGLISH / GLOBAL SOURCES) ---
+# --- CATEGORY RSS FEED (GLOBAL/ENGLISH) ---
 CATEGORY_URLS = {
     "Transfer News": "https://news.google.com/rss/search?q=football+transfer+news+Fabrizio+Romano+here+we+go+when:1d&hl=en-GB&gl=GB&ceid=GB:en",
     "Premier League": "https://news.google.com/rss/search?q=Premier+League+news+match+result+highlights+when:1d&hl=en-GB&gl=GB&ceid=GB:en",
@@ -58,22 +58,15 @@ def get_internal_links_context():
         items = random.sample(items, 30)
     return json.dumps(dict(items))
 
-# --- GOOGLE DISCOVER IMAGE ENGINE ---
+# --- DISCOVER-READY IMAGE ENGINE (DIRECT STREAM) ---
 def add_subtle_noise(img, intensity=0.02):
-    """
-    Menambahkan noise acak pada pixel agar Hash Gambar berubah total.
-    Penting untuk menghindari deteksi 'Duplicate Content' di Google Discover.
-    """
     width, height = img.size
     pixels = img.load()
-    
     for x in range(width):
         for y in range(height):
-            # Hanya ubah pixel secara acak (10% dari total pixel) agar cepat
             if random.random() < 0.1:
                 r, g, b = pixels[x, y]
                 noise = random.randint(int(-255 * intensity), int(255 * intensity))
-                # Clamp values 0-255
                 r = max(0, min(255, r + noise))
                 g = max(0, min(255, g + noise))
                 b = max(0, min(255, b + noise))
@@ -81,68 +74,47 @@ def add_subtle_noise(img, intensity=0.02):
     return img
 
 def download_and_optimize_image(query, filename):
-    """
-    Direct Stream + Discover Optimization (1200px, 16:9, Hash Busting).
-    """
     clean_query = query.replace(" ", "+")
-    
-    # URL Bing Direct Stream
-    # w=1280 & h=720 (Wajib HD untuk Discover)
+    # Request HD Image for Discover (1280x720)
     image_url = f"https://tse2.mm.bing.net/th?q={clean_query}+football+match+photo&w=1280&h=720&c=7&rs=1&p=0"
     
-    print(f"      🔍 Fetching Discover-Ready Image: {query}...")
+    print(f"      🔍 Fetching Discover Image: {query}...")
     
     try:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
-        }
-        
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'}
         response = requests.get(image_url, headers=headers, timeout=20)
         
         if response.status_code == 200:
             if "image" not in response.headers.get("content-type", ""):
-                print("      ❌ URL returned non-image content.")
                 return False
 
             img = Image.open(BytesIO(response.content))
             img = img.convert("RGB")
             
-            # --- MODIFIKASI KHUSUS GOOGLE DISCOVER ---
-            
-            # 1. Smart Crop (Buang 10% tepi untuk watermark)
+            # 1. Smart Crop & Resize for Discover (1200x675 is the Golden Ratio 16:9)
             width, height = img.size
             img = img.crop((width*0.1, height*0.1, width*0.9, height*0.9)) 
-            
-            # 2. Resize Wajib 1200x675 (Rasio 16:9 Sempurna)
-            # Discover minta lebar minimal 1200px. 
             img = img.resize((1200, 675), Image.Resampling.LANCZOS)
             
-            # 3. Mirroring (Anti-Duplicate Basic)
+            # 2. Mirror & Hash Busting (SEO Unique Image)
             img = ImageOps.mirror(img) 
-            
-            # 4. Hash Busting (Anti-Duplicate Advanced)
-            # Tambahkan noise & ubah warna agar file dianggap "Original"
             img = add_subtle_noise(img, intensity=0.05)
             
+            # 3. Enhance
             enhancer = ImageEnhance.Sharpness(img)
-            img = enhancer.enhance(1.3) # Tajamkan
-            
+            img = enhancer.enhance(1.3)
             enhancer_col = ImageEnhance.Color(img)
-            img = enhancer_col.enhance(1.1) # Warna lebih pop
+            img = enhancer_col.enhance(1.1)
             
-            # 5. Save dengan Metadata Bersih
             output_path = f"{IMAGE_DIR}/{filename}"
             img.save(output_path, "JPEG", quality=92, optimize=True)
             return True
-        else:
-            print(f"      ⚠️ Server status: {response.status_code}")
-            
     except Exception as e:
         print(f"      ⚠️ Image Fail: {e}")
     
     return False
 
-# --- AI WRITER ENGINE ---
+# --- AI WRITER ENGINE (HIGH SEO STRATEGY) ---
 def parse_ai_response(text):
     try:
         parts = text.split("|||BODY_START|||")
@@ -161,34 +133,43 @@ def parse_ai_response(text):
 def get_groq_article_seo(title, summary, link, internal_links_map, target_category):
     MODEL_NAME = "llama-3.3-70b-versatile"
     
+    # --- SUPER SEO PROMPT ---
     system_prompt = f"""
-    You are a Senior Football Pundit for 'Soccer Daily'.
+    You are an Expert SEO Football Journalist for 'Soccer Daily'.
     TARGET CATEGORY: {target_category}
     
-    TASK: Write an engaging football news article (800-1000 words) in ENGLISH.
+    TASK: Write a Google-Discover-Ready article (800+ words) in ENGLISH.
     
-    OUTPUT FORMAT (JSON):
-    {{"title": "Catchy Headline (Max 70 chars)", "description": "SEO Summary (Max 150 chars)", "category": "{target_category}", "main_keyword": "Main Player/Team Name"}}
+    OUTPUT FORMAT (JSON REQUIRED):
+    {{"title": "High CTR Headline (Max 60 chars)", "description": "Meta Description with keywords (Max 155 chars)", "category": "{target_category}", "main_keyword": "Primary Keyword", "lsi_keywords": ["keyword1", "keyword2"]}}
     |||BODY_START|||
     [Markdown Content]
 
-    STYLE:
-    - Tone: Professional, passionate (British English).
-    - Structure: Highlights, Intro (5W1H), Analysis, Stats, Quotes, Verdict.
-    - SEO: Use internal links: {internal_links_map}.
+    SEO RULES (STRICT):
+    1. **Keyword Placement**: The 'main_keyword' MUST appear in the First Paragraph and at least one H2 header.
+    2. **Structure**: 
+       - H1 (Title)
+       - **Key Takeaways** (Bullet points)
+       - H2: Introduction (Context)
+       - H2: Deep Analysis / Tactical View
+       - H2: {target_category} Implications
+       - H3: Player/Manager Quotes (Simulated/Paraphrased)
+       - H2: Conclusion & Prediction
+    3. **Internal Linking**: Naturally weave in links from: {internal_links_map}. Format: [Anchor Text](/articles/slug).
+    4. **Engagement**: Use short paragraphs (max 3 sentences). Ask a question at the end to trigger comments.
     """
 
     user_prompt = f"""
-    Source: {title}
+    Breaking News: {title}
     Summary: {summary}
     Link: {link}
     
-    Write now.
+    Write the SEO-optimized article now.
     """
 
     for index, api_key in enumerate(GROQ_API_KEYS):
         try:
-            print(f"      🤖 AI Writing ({target_category})...")
+            print(f"      🤖 AI Writing SEO Content ({target_category})...")
             client = Groq(api_key=api_key)
             completion = client.chat.completions.create(
                 model=MODEL_NAME,
@@ -233,13 +214,14 @@ def main():
                 break
 
             clean_title = entry.title.split(" - ")[0]
+            # SEO Friendly Slug (Short & Clean)
             slug = slugify(clean_title)
             filename = f"{slug}.md"
 
             if os.path.exists(f"{CONTENT_DIR}/{filename}"):
                 continue
 
-            print(f"   🔥 Processing: {clean_title[:50]}...")
+            print(f"   🔥 Processing: {clean_title[:40]}...")
             
             # 1. AI Text
             context = get_internal_links_context()
@@ -250,23 +232,28 @@ def main():
             data = parse_ai_response(raw_response)
             if not data: continue
 
-            # 2. Image (Direct Stream + Discover Optimization)
+            # 2. Image
             img_name = f"{slug}.jpg"
             has_img = download_and_optimize_image(data['main_keyword'], img_name)
-            
             final_img = f"/images/{img_name}" if has_img else "/images/default-football.jpg"
             
-            # 3. Save
+            # 3. Save (With Extended Frontmatter for SEO)
             date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S+00:00")
+            
+            # Menyiapkan Tags/Keywords untuk Frontmatter
+            tags_list = data.get('lsi_keywords', [])
+            tags_list.append(data['main_keyword'])
+            tags_str = str(tags_list).replace("'", '"') # Format JSON array string
             
             md = f"""---
 title: "{data['title'].replace('"', "'")}"
 date: {date}
 author: "{AUTHOR_NAME}"
 categories: ["{data['category']}"]
-tags: ["{data['main_keyword']}", "Soccer News", "Football"]
+tags: {tags_str}
 featured_image: "{final_img}"
 description: "{data['description'].replace('"', "'")}"
+slug: "{slug}"
 draft: false
 ---
 
