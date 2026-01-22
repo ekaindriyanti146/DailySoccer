@@ -132,7 +132,7 @@ def parse_ai_response(text):
         return None
 
 def get_groq_article_seo(title, summary, link, internal_links_map, target_category):
-    AVAILABLE_MODELS = ["llama-3.3-70b-versatile", "mixtral-8x7b-32768", "llama-3.1-8b-instant"]
+    AVAILABLE_MODELS = ["llama-3.3-70b-versatile"]
     
     # --- PROMPT: BANNED WORDS STRATEGY ---
     system_prompt = f"""
@@ -174,7 +174,7 @@ def get_groq_article_seo(title, summary, link, internal_links_map, target_catego
     1. **Executive Summary**: Blockquote (`>`) with 3 bullet points.
     2. **Deep Dive**: 300 words analyzing the event.
     3. **Data Section (Markdown Table)**: MUST include a table. Header must be unique (e.g. "Head-to-Head History").
-    4. **🚀 Also Read**: List 3 links from: {internal_links_map}.
+    4. **Also Read**: List 3 links from: {internal_links_map}.
     5. **Expert Opinion**: Quotes and deep interpretation.
     6. **External Link**: One link to BBC/Transfermarkt.
     7. **FAQ**: 3 Questions.
