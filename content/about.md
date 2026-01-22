@@ -1,31 +1,32 @@
 ---
-title: "About Soccer Daily"
-date: 2024-01-01
-description: "Learn about Soccer Daily's mission to provide deep, data-driven football analysis."
+title: "About Us"
+description: "Soccer Daily bridges the gap between casual fandom and professional tactical analysis."
 draft: false
 layout: "page"
 ---
 
-## Who We Are
+## The Mission
 
-Welcome to **Soccer Daily**, the premier destination for intelligent football fans. Unlike traditional news sites that only report the score, we explain *why* it happened.
+**Soccer Daily** was founded with a singular ambition: to elevate football journalism beyond the box score. In an era of clickbait and recycled rumors, we stand for **Deep Contextual Analysis**.
 
-Founded in 2024, our mission is to bridge the gap between casual fandom and professional analysis. We combine traditional journalism with advanced metrics (xG, passing networks, tactical heatmaps) to give you a complete picture of the beautiful game.
+We believe that football is not just about *what* happened, but *why* it happened. Our coverage combines traditional reporting with modern advanced metrics (xG, PPDA, Heatmaps) to provide a comprehensive understanding of the beautiful game.
 
-## Our Philosophy: Data Meets Passion
+## Our Approach: Data Meets Passion
 
-In the modern era of football, data is king. However, numbers without context are meaningless. At Soccer Daily, we believe in:
+We are a "Digital-First" newsroom leveraging advanced technology and data pipelines to track 6 major competitions:
+*   Premier League
+*   La Liga
+*   UEFA Champions League
+*   International Tournaments
+*   Transfer Markets
 
-1.  **Contextual Analysis**: We don't just say a player played well; we show you the tactical shift that allowed them to shine.
-2.  **Objective Reporting**: We strive to be unbiased in our match reports and transfer news.
-3.  **Fan-Centric Approach**: We listen to the community and address the questions fans are actually asking.
+However, data is nothing without interpretation. Our editorial team, led by Senior Analyst **Dave Harsya**, ensures that every statistic tells a story. We don't just list numbers; we explain their tactical implications on the pitch.
 
-## Meet The Analyst
+## Why Trust Us?
 
-**Dave Harsya (Senior Analyst)**
-With over 10 years of experience following European football, Dave specializes in tactical breakdowns and transfer market valuation. His work focuses on the Premier League, La Liga, and the Champions League.
+*   **Accuracy First:** We verify transfer rumors against Tier-1 sources before publishing.
+*   **Objectivity:** While we love the game, our analysis remains unbiased. We praise rivals and critique favorites based on performance, not emotion.
+*   **Speed & Depth:** We strive to be the first to break the news and the best at explaining it.
 
-## Contact Us
-
-Have a tip or a correction?
-Email us at: **contact@soccerdaily.com**
+---
+*Soccer Daily is an independent digital publication committed to the highest standards of sports journalism.*
