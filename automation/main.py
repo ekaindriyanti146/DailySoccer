@@ -111,7 +111,7 @@ def download_and_optimize_image(query, filename):
     except: pass
     return False
 
-# --- AI WRITER ENGINE (HYBRID: LONG FORM + UNIQUE HEADERS) ---
+# --- AI WRITER ENGINE (STRICT UNIQUE HEADERS) ---
 def parse_ai_response(text):
     try:
         parts = text.split("|||BODY_START|||")
@@ -124,6 +124,7 @@ def parse_ai_response(text):
         
         data['title'] = clean_text(data.get('title', ''))
         data['description'] = clean_text(data.get('description', ''))
+        data['image_alt'] = clean_text(data.get('image_alt', data['title']))
         data['content'] = body_part
         return data
     except Exception as e:
@@ -133,43 +134,54 @@ def parse_ai_response(text):
 def get_groq_article_seo(title, summary, link, internal_links_map, target_category):
     AVAILABLE_MODELS = ["llama-3.3-70b-versatile", "mixtral-8x7b-32768", "llama-3.1-8b-instant"]
     
-    # --- PROMPT PERBAIKAN (HYBRID STRATEGY) ---
+    # --- PROMPT: BANNED WORDS STRATEGY ---
     system_prompt = f"""
     You are Dave Harsya, a Senior Football Analyst for 'Soccer Daily'.
     TARGET CATEGORY: {target_category}
     
-    GOAL: Write a LONG-FORM (1200+ words) & HIGHLY UNIQUE article.
+    GOAL: Write a 1200+ word article with 100% UNIQUE HEADERS.
     
     OUTPUT FORMAT (JSON):
-    {{"title": "Punchy Headline (NO MARKDOWN)", "description": "SEO meta description", "category": "{target_category}", "main_keyword": "Entity Name", "lsi_keywords": ["keyword1"]}}
+    {{
+        "title": "Headline (NO MARKDOWN)",
+        "description": "Meta description",
+        "category": "{target_category}",
+        "main_keyword": "Entity Name",
+        "lsi_keywords": ["keyword1"],
+        "image_alt": "Descriptive text"
+    }}
     |||BODY_START|||
     [Markdown Content]
 
-    # RULES FOR HEADERS (CRITICAL):
-    - **DO NOT USE GENERIC HEADERS** (e.g., "Introduction", "Tactical Analysis", "Conclusion").
-    - **EVERY H2 MUST BE UNIQUE** and customized to the news topic.
-    - BAD H2: "Historical Context"
-    - GOOD H2: "Why Anfield Has Become a Fortress for Slot's Liverpool"
-    - BAD H2: "Key Stats"
-    - GOOD H2: "The Numbers Behind Salah's Golden Boot Charge"
-
-    # CONTENT FLOW (FOR 1200 WORDS):
-    1. **The Lead (150 words)**: Hook + Bold **Main Keyword**.
-    2. **H2: [Contextual/Historical Header] (250 words)**: Discuss the background story deeply.
-    3. **H2: [Tactical/Technical Header] (300 words)**: Use terms like xG, Pressing traps, Midblock.
-    4. **📊 H2: [Statistical Header] (MANDATORY TABLE)**:
-       - Generate a Markdown Table here.
-       - Do NOT use bullet points. Real Data Table.
-    5. **🚀 Also Read**:
-       - "### 🚀 Also Read"
-       - List 3 links from: {internal_links_map} (Format: * [Title](URL))
-    6. **H2: [Player/Manager Spotlight Header] (200 words)**: Focus on key individuals.
-    7. **H2: [Future/Implication Header] (150 words)**: What happens next?
-    8. **External Authority**: Include ONE natural link to a high-authority site (Transfermarkt/BBC).
-    9. **FAQ**: 3 Questions.
+    # 🚫 BANNED HEADER WORDS (CRITICAL):
+    You are FORBIDDEN from using these words in H2/H3 headers:
+    - "Introduction"
+    - "Conclusion"
+    - "Analysis"
+    - "Tactical Analysis"
+    - "Key Stats"
+    - "Statistics"
+    - "Summary"
+    - "Background"
+    - "Verdict"
     
-    # TONE:
-    - Analytical, Opinionated, Insightful.
+    # ✅ RULE: EVERY HEADER MUST BE A MINI-HEADLINE:
+    Instead of "Tactical Analysis", use "How Slot's Midfield Overloaded The Flanks".
+    Instead of "Key Stats", use "The Numbers Behind Salah's Dominance".
+    Instead of "Conclusion", use "Why This Result Change the Title Race".
+
+    # MANDATORY CONTENT BLOCKS:
+    1. **Executive Summary**: Blockquote (`>`) with 3 bullet points.
+    2. **Deep Dive**: 300 words analyzing the event.
+    3. **Data Section (Markdown Table)**: MUST include a table. Header must be unique (e.g. "Head-to-Head History").
+    4. **Also Read**: List 3 links from: {internal_links_map}.
+    5. **Expert Opinion**: Quotes and deep interpretation.
+    6. **External Link**: One link to BBC/Transfermarkt.
+    7. **FAQ**: 3 Questions.
+
+    # STYLE:
+    - NO EMOJIS.
+    - Professional, Analytical.
     """
 
     user_prompt = f"""
@@ -177,7 +189,7 @@ def get_groq_article_seo(title, summary, link, internal_links_map, target_catego
     Summary: {summary}
     Link: {link}
     
-    Write the 1200-word masterpiece now. Ensure ALL HEADERS ARE UNIQUE.
+    Write now. Remember: BANNED WORDS apply to all headers. Make every H2 unique to the story.
     """
 
     for api_key in GROQ_API_KEYS:
@@ -191,8 +203,8 @@ def get_groq_article_seo(title, summary, link, internal_links_map, target_catego
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt}
                     ],
-                    temperature=0.7, 
-                    max_tokens=7500, # Max Token ditingkatkan untuk 1200 kata
+                    temperature=0.75, # Kreativitas Tinggi untuk Judul Unik
+                    max_tokens=7500,
                 )
                 return completion.choices[0].message.content
             except RateLimitError: continue
@@ -244,6 +256,8 @@ def main():
             if data.get('main_keyword'): tags_list.append(data['main_keyword'])
             tags_str = json.dumps(tags_list)
             
+            img_alt = data.get('image_alt', data['title']).replace('"', "'")
+            
             md = f"""---
 title: "{data['title']}"
 date: {date}
@@ -251,6 +265,7 @@ author: "{AUTHOR_NAME}"
 categories: ["{data['category']}"]
 tags: {tags_str}
 featured_image: "{final_img}"
+featured_image_alt: "{img_alt}"
 description: "{data['description']}"
 slug: "{slug}"
 draft: false
@@ -265,7 +280,7 @@ draft: false
             
             if 'title' in data: save_link_to_memory(data['title'], slug)
             
-            print(f"   ✅ Published: {filename} (1200w + Unique H2)")
+            print(f"   ✅ Published: {filename}")
             cat_success_count += 1
             total_generated += 1
             time.sleep(5)
