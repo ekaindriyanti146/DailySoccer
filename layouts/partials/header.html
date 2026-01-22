@@ -1,62 +1,70 @@
-<header class="bg-white border-b-4 border-news-dark sticky top-0 z-50">
-    <!-- Top Bar (Date & Search) -->
-    <div class="bg-news-dark text-white text-[10px] py-1 hidden md:block">
+<header class="bg-gray-900 border-b-4 border-red-600 sticky top-0 z-50 shadow-2xl">
+    
+    <!-- Top Bar -->
+    <div class="bg-black text-gray-400 text-[10px] py-1 hidden md:block border-b border-gray-800">
         <div class="container mx-auto px-4 flex justify-between">
             <span>{{ now.Format "Monday, January 2, 2006" }}</span>
-            <span>Soccer Daily News</span>
+            <span class="tracking-wider">SOCCER DAILY OFFICIAL</span>
         </div>
     </div>
 
     <!-- Main Header -->
-    <div class="container mx-auto px-4 h-16 flex items-center justify-between">
+    <div class="container mx-auto px-4 h-20 flex items-center justify-between">
         
         <!-- LOGO -->
         <a href="/" class="flex items-center group">
-            <div class="w-8 h-8 rounded-full border-[3px] border-news-dark flex items-center justify-center mr-2 group-hover:bg-news-dark group-hover:border-transparent transition">
-                <div class="w-3 h-3 bg-news-dark rounded-full group-hover:bg-white"></div>
+            <div class="w-9 h-9 rounded-full border-[3px] border-white flex items-center justify-center mr-2 group-hover:border-red-500 transition duration-300">
+                <div class="w-3 h-3 bg-white rounded-full group-hover:bg-red-500 transition duration-300"></div>
             </div>
-            <span class="font-display font-black text-2xl tracking-tighter text-news-dark">
-                Soccer<span class="font-light">DAILY</span>
+            <span class="font-display font-black text-2xl tracking-tighter text-white">
+                Soccer<span class="font-light text-gray-300">DAILY</span>
             </span>
         </a>
 
-        <!-- Desktop Navigation -->
-        <nav class="hidden lg:flex items-center space-x-6">
-            {{ $allowed := slice "Premier League" "Champions League" "La Liga" "World" "Transfer News" }}
+        <!-- NAVIGASI KATEGORI UMUM (Sesuai Python Script) -->
+        <nav class="hidden lg:flex items-center space-x-6 overflow-x-auto no-scrollbar">
             
-            {{ range $allowed }}
-                {{ $name := . }}
-                {{ $taxonomy := index $.Site.Taxonomies.categories ($name | urlize) }}
+            <!-- Link Home -->
+            <a href="/" class="font-display font-bold text-sm text-gray-300 hover:text-white uppercase tracking-wider transition-colors">
+                Home
+            </a>
+
+            <!-- DAFTAR MENU PERSIS SEPERTI DI PYTHON SCRIPT -->
+            {{ $menu_items := slice "Transfer News" "Premier League" "Champions League" "La Liga" "International" "Tactical Analysis" }}
+            
+            {{ range $menu_items }}
+            <!-- Logic URL: Mengubah "Premier League" menjadi "/categories/premier-league" -->
+            <a href="{{ "/categories/" | relLangURL }}{{ . | urlize }}" 
+               class="relative font-display font-bold text-sm text-gray-300 hover:text-white uppercase tracking-wider transition-colors duration-300 py-2 group whitespace-nowrap">
                 
-                {{ if $taxonomy }}
-                <a href="{{ "/categories/" | relLangURL }}{{ $name | urlize }}" 
-                   class="font-display font-bold text-sm text-gray-700 hover:text-red-600 uppercase tracking-tight transition whitespace-nowrap">
-                    {{ . }}
-                </a>
-                {{ end }}
+                {{ . }} <!-- Nama Menu -->
+
+                <!-- Garis Merah Hover -->
+                <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-red-600 transition-all duration-300 group-hover:w-full"></span>
+            </a>
             {{ end }}
+
         </nav>
 
-        <!-- Right Side: Watch Live Button (EYE CATCHER VERSION) -->
-        <div class="flex items-center">
+        <!-- WATCH LIVE BUTTON -->
+        <div class="flex items-center pl-4">
             <a href="https://wwp.ailooe.com/redirect-zone/058f7788" 
                target="_blank" 
                rel="noopener noreferrer" 
-               class="group flex items-center gap-2 border-2 border-red-600 bg-white px-4 py-1.5 rounded-full transition-all duration-300 hover:bg-red-600 hover:text-white hover:shadow-lg hover:shadow-red-500/30">
-                
-                <!-- Ikon Record / Live (Titik Merah dengan Efek Ping) -->
+               class="group relative flex items-center gap-3 bg-white px-5 py-2 rounded-full transition-all duration-300 hover:bg-red-600 hover:shadow-[0_0_15px_rgba(220,38,38,0.7)]">
                 <span class="relative flex h-3 w-3">
-                  <!-- Lingkaran luar yang membesar (animasi ping) -->
-                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
-                  <!-- Lingkaran dalam statis -->
-                  <span class="relative inline-flex rounded-full h-3 w-3 bg-red-600 group-hover:bg-white transition-colors"></span>
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-600 opacity-75 group-hover:bg-white"></span>
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-red-600 group-hover:bg-white"></span>
                 </span>
-                
-                <!-- Teks -->
-                <span class="text-xs font-black uppercase tracking-wider text-red-600 group-hover:text-white transition-colors">
-                    Watch Live
+                <span class="text-xs font-black uppercase tracking-widest text-gray-900 group-hover:text-white transition-colors">
+                    Live
                 </span>
             </a>
         </div>
+
+        <!-- Mobile Menu Button -->
+        <button class="lg:hidden text-white focus:outline-none">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
     </div>
 </header>
