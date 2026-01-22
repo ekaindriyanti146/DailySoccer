@@ -29,10 +29,22 @@ CATEGORY_URLS = {
     "Tactical Analysis": "https://news.google.com/rss/search?q=football+tactical+analysis+prediction+preview+when:1d&hl=en-GB&gl=GB&ceid=GB:en"
 }
 
-# --- AUTHORITY SOURCES (ROTATION) ---
+# --- AUTHORITY SOURCES ---
 AUTHORITY_SOURCES = [
     "Transfermarkt", "Sky Sports", "The Athletic", "Opta Analyst",
     "WhoScored", "BBC Sport", "The Guardian", "UEFA Official", "ESPN FC"
+]
+
+# --- DAFTAR GAMBAR CADANGAN (JIKA DOWNLOAD GAGAL) ---
+# Agar tidak muncul gambar kosong/sama terus
+FALLBACK_IMAGES = [
+    "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80", # Stadium
+    "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&w=1200&q=80", # Ball on grass
+    "https://images.unsplash.com/photo-1556056504-5c7696c4c28d?auto=format&fit=crop&w=1200&q=80", # Fans
+    "https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=1200&q=80", # Action
+    "https://images.unsplash.com/photo-1522778119026-d647f0565c6a?auto=format&fit=crop&w=1200&q=80", # Goal net
+    "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=1200&q=80", # Ball
+    "https://images.unsplash.com/photo-1518605348487-73d9d3dc2345?auto=format&fit=crop&w=1200&q=80"  # Silhouette
 ]
 
 CONTENT_DIR = "content/articles"
@@ -53,35 +65,19 @@ def load_link_memory():
 def save_link_to_memory(title, slug):
     os.makedirs(DATA_DIR, exist_ok=True)
     memory = load_link_memory()
-    # Simpan Judul Bersih & Link Relatif
     memory[title] = f"/articles/{slug}"
-    # Keep last 50
     if len(memory) > 50:
         memory = dict(list(memory.items())[-50:])
     with open(MEMORY_FILE, 'w') as f: json.dump(memory, f, indent=2)
 
-# --- FIX UTAMA: PRE-FORMAT LINKS DI PYTHON ---
 def get_formatted_internal_links():
-    """
-    Python yang menyusun format link Markdown, BUKAN AI.
-    Ini menjamin link 100% hidup dan valid.
-    """
     memory = load_link_memory()
     items = list(memory.items())
-    
-    if not items:
-        return "" # Kosong jika belum ada memori
-        
-    # Ambil 3 acak
-    if len(items) > 3:
-        items = random.sample(items, 3)
-    
-    # RAKIT LINK DI SINI (Python Logic)
-    # Output: * [Judul Artikel](/articles/slug)
+    if not items: return ""
+    if len(items) > 3: items = random.sample(items, 3)
     formatted_links = []
     for title, url in items:
         formatted_links.append(f"* [{title}]({url})")
-        
     return "\n".join(formatted_links)
 
 # --- RSS FETCHER ---
@@ -104,31 +100,46 @@ def clean_text(text):
     cleaned = cleaned.strip()
     return cleaned
 
-# --- IMAGE ENGINE ---
+# --- IMAGE ENGINE (VARIASI ACAK) ---
 def download_and_optimize_image(query, filename):
-    clean_query = query.replace(" ", "+")
-    image_url = f"https://tse2.mm.bing.net/th?q={clean_query}+football+match+action+photo&w=1280&h=720&c=7&rs=1&p=0"
-    print(f"      🔍 Fetching High-Res Image: {query}...")
+    # Trik: Tambahkan kata acak agar hasil pencarian selalu beda
+    random_suffix = random.choice(["stadium atmosphere", "fans cheering", "match action", "soccer ball", "grass field", "night match"])
+    clean_query = f"{query} {random_suffix}".replace(" ", "+")
+    
+    image_url = f"https://tse2.mm.bing.net/th?q={clean_query}&w=1280&h=720&c=7&rs=1&p=0"
+    print(f"      🔍 Fetching Image: {clean_query}...")
+    
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'}
         response = requests.get(image_url, headers=headers, timeout=20)
+        
         if response.status_code == 200:
-            if "image" not in response.headers.get("content-type", ""): return False
+            if "image" not in response.headers.get("content-type", ""): return None
             img = Image.open(BytesIO(response.content))
             img = img.convert("RGB")
+            
             width, height = img.size
             img = img.crop((width*0.1, height*0.1, width*0.9, height*0.9)) 
             img = img.resize((1200, 675), Image.Resampling.LANCZOS)
+            
             img = ImageOps.mirror(img) 
             enhancer = ImageEnhance.Sharpness(img)
             img = enhancer.enhance(1.4)
             enhancer_col = ImageEnhance.Color(img)
             img = enhancer_col.enhance(1.1)
+            
             output_path = f"{IMAGE_DIR}/{filename}"
             img.save(output_path, "JPEG", quality=92, optimize=True)
-            return True
-    except: pass
-    return False
+            
+            # Berhasil download, return path lokal
+            return f"/images/{filename}"
+            
+    except Exception as e:
+        print(f"      ⚠️ Image Download Fail: {e}")
+    
+    # JIKA GAGAL DOWNLOAD -> Return Salah Satu Gambar Cadangan Acak
+    print("      ⚠️ Using Random Fallback Image.")
+    return random.choice(FALLBACK_IMAGES)
 
 # --- AI WRITER ENGINE ---
 def parse_ai_response(text, fallback_title, fallback_desc):
@@ -145,8 +156,7 @@ def parse_ai_response(text, fallback_title, fallback_desc):
             data['image_alt'] = clean_text(data.get('image_alt', data['title']))
             data['content'] = body_part
             return data
-    except Exception as e:
-        print(f"      ⚠️ JSON Parse Warning. Using Fallback.")
+    except Exception: pass
     
     clean_body = re.sub(r'\{.*\}', '', text, flags=re.DOTALL).replace("|||BODY_START|||", "").strip()
     return {
@@ -161,10 +171,8 @@ def parse_ai_response(text, fallback_title, fallback_desc):
 
 def get_groq_article_seo(title, summary, link, internal_links_block, target_category):
     AVAILABLE_MODELS = ["llama-3.3-70b-versatile", "mixtral-8x7b-32768", "llama-3.1-8b-instant"]
-    
     selected_sources = ", ".join(random.sample(AUTHORITY_SOURCES, 3))
     
-    # --- PROMPT ANTI-GAGAL LINK ---
     system_prompt = f"""
     You are Dave Harsya, a Senior Football Analyst for 'Soccer Daily'.
     TARGET CATEGORY: {target_category}
@@ -184,26 +192,21 @@ def get_groq_article_seo(title, summary, link, internal_links_block, target_cate
     [Markdown Content]
 
     # RULES:
-    - NO GENERIC HEADERS (e.g. "Introduction"). Use creative H2 titles.
+    - NO GENERIC HEADERS. Use creative sub-headlines.
     - NO EMOJIS.
     
-    # INTERNAL LINKING INSTRUCTION (CRITICAL):
-    I have pre-formatted the 'Also Read' links for you. 
-    IF the following block is NOT empty, you MUST insert it exactly as is in the middle of the article:
-    
+    # INTERNAL LINKING:
     BLOCK START:
     ### Read More
     {internal_links_block}
     BLOCK END.
-    
-    (If the block above is empty, do not create the 'Read More' section).
 
     # STRUCTURE:
     1. Executive Summary (Blockquote).
-    2. Deep Dive Analysis (Unique H2).
-    3. Mandatory Data Table (Unique H2).
-    4. **Read More Section** (Insert the block provided above).
-    5. Quotes & Reaction (Unique H2).
+    2. Deep Dive Analysis.
+    3. Mandatory Data Table.
+    4. **Read More Section** (Paste Block Above).
+    5. Quotes & Reaction.
     6. External Authority Link (Source: {selected_sources}).
     7. FAQ.
     """
@@ -213,7 +216,7 @@ def get_groq_article_seo(title, summary, link, internal_links_block, target_cate
     Summary: {summary}
     Link: {link}
     
-    Write the 1200-word masterpiece now. Don't forget to PASTE the Read More block.
+    Write the 1200-word masterpiece now.
     """
 
     for api_key in GROQ_API_KEYS:
@@ -261,10 +264,7 @@ def main():
 
             print(f"   🔥 Processing: {clean_title[:40]}...")
             
-            # 1. SIAPKAN LINK DI PYTHON (BUKAN DI AI)
             links_block = get_formatted_internal_links()
-            
-            # 2. KIRIM LINK YANG SUDAH JADI KE AI
             raw_response = get_groq_article_seo(clean_title, entry.summary, entry.link, links_block, category_name)
             
             if not raw_response: continue
@@ -272,10 +272,12 @@ def main():
             data = parse_ai_response(raw_response, clean_title, entry.summary)
             if not data: continue
 
+            # IMAGE PROCESSING UPGRADED
             img_name = f"{slug}.jpg"
             keyword_for_image = data.get('main_keyword') or clean_title
-            has_img = download_and_optimize_image(keyword_for_image, img_name)
-            final_img = f"/images/{img_name}" if has_img else "/images/default-football.jpg"
+            
+            # Fungsi ini sekarang me-return Path (String), bukan Boolean
+            final_img = download_and_optimize_image(keyword_for_image, img_name)
             
             date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S+00:00")
             tags_list = data.get('lsi_keywords', [])
