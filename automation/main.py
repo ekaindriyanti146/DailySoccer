@@ -29,6 +29,21 @@ CATEGORY_URLS = {
     "Tactical Analysis": "https://news.google.com/rss/search?q=football+tactical+analysis+prediction+preview+when:1d&hl=en-GB&gl=GB&ceid=GB:en"
 }
 
+# --- LIST SUMBER TERPERCAYA (SEO AUTHORITY) ---
+# Script akan memilih secara acak dari list ini agar link keluar bervariasi
+AUTHORITY_SOURCES = [
+    "Transfermarkt (for market values)",
+    "Sky Sports Football",
+    "The Athletic (Tactical Analysis)",
+    "Opta Analyst (Statistics)",
+    "WhoScored",
+    "BBC Sport",
+    "The Guardian Football",
+    "UEFA Official Site",
+    "FIFA Official Site",
+    "ESPN FC"
+]
+
 CONTENT_DIR = "content/articles"
 IMAGE_DIR = "static/images"
 DATA_DIR = "automation/data"
@@ -111,35 +126,47 @@ def download_and_optimize_image(query, filename):
     except: pass
     return False
 
-# --- AI WRITER ENGINE (STRICT UNIQUE HEADERS) ---
-def parse_ai_response(text):
+# --- AI WRITER ENGINE ---
+def parse_ai_response(text, fallback_title, fallback_desc):
     try:
         parts = text.split("|||BODY_START|||")
-        if len(parts) < 2: return None
-        json_part = parts[0].strip()
-        body_part = parts[1].strip()
-        json_part = re.sub(r'```json\s*', '', json_part)
-        json_part = re.sub(r'```', '', json_part)
-        data = json.loads(json_part)
-        
-        data['title'] = clean_text(data.get('title', ''))
-        data['description'] = clean_text(data.get('description', ''))
-        data['image_alt'] = clean_text(data.get('image_alt', data['title']))
-        data['content'] = body_part
-        return data
+        if len(parts) >= 2:
+            json_part = parts[0].strip()
+            body_part = parts[1].strip()
+            json_part = re.sub(r'```json\s*', '', json_part)
+            json_part = re.sub(r'```', '', json_part)
+            data = json.loads(json_part)
+            data['title'] = clean_text(data.get('title', fallback_title))
+            data['description'] = clean_text(data.get('description', fallback_desc))
+            data['image_alt'] = clean_text(data.get('image_alt', data['title']))
+            data['content'] = body_part
+            return data
     except Exception as e:
-        print(f"      ❌ Parse Error: {e}")
-        return None
+        print(f"      ⚠️ JSON Parse Warning: {e}. Using Fallback.")
+    
+    clean_body = re.sub(r'\{.*\}', '', text, flags=re.DOTALL).replace("|||BODY_START|||", "").strip()
+    return {
+        "title": clean_text(fallback_title),
+        "description": clean_text(fallback_desc),
+        "image_alt": clean_text(fallback_title),
+        "category": "General",
+        "main_keyword": "Football",
+        "lsi_keywords": [],
+        "content": clean_body
+    }
 
 def get_groq_article_seo(title, summary, link, internal_links_map, target_category):
-    AVAILABLE_MODELS = ["llama-3.3-70b-versatile"]
+    AVAILABLE_MODELS = ["llama-3.3-70b-versatile", "mixtral-8x7b-32768", "llama-3.1-8b-instant"]
     
-    # --- PROMPT: BANNED WORDS STRATEGY ---
+    # --- PILIH 3 SUMBER EKSTERNAL SECARA ACAK ---
+    # Ini agar artikel tidak melulu link ke BBC
+    selected_sources = ", ".join(random.sample(AUTHORITY_SOURCES, 3))
+    
     system_prompt = f"""
     You are Dave Harsya, a Senior Football Analyst for 'Soccer Daily'.
     TARGET CATEGORY: {target_category}
     
-    GOAL: Write a 1200+ word article with 100% UNIQUE HEADERS.
+    GOAL: Write a 1200+ word article with UNIQUE HEADERS & DIVERSE SOURCES.
     
     OUTPUT FORMAT (JSON):
     {{
@@ -153,35 +180,24 @@ def get_groq_article_seo(title, summary, link, internal_links_map, target_catego
     |||BODY_START|||
     [Markdown Content]
 
-    # 🚫 BANNED HEADER WORDS (CRITICAL):
-    You are FORBIDDEN from using these words in H2/H3 headers:
-    - "Introduction"
-    - "Conclusion"
-    - "Analysis"
-    - "Tactical Analysis"
-    - "Key Stats"
-    - "Statistics"
-    - "Summary"
-    - "Background"
-    - "Verdict"
-    
-    # ✅ RULE: EVERY HEADER MUST BE A MINI-HEADLINE:
-    Instead of "Tactical Analysis", use "How Slot's Midfield Overloaded The Flanks".
-    Instead of "Key Stats", use "The Numbers Behind Salah's Dominance".
-    Instead of "Conclusion", use "Why This Result Change the Title Race".
-
-    # MANDATORY CONTENT BLOCKS:
-    1. **Executive Summary**: Blockquote (`>`) with 3 bullet points.
-    2. **Deep Dive**: 300 words analyzing the event.
-    3. **Data Section (Markdown Table)**: MUST include a table. Header must be unique (e.g. "Head-to-Head History").
-    4. **Also Read**: List 3 links from: {internal_links_map}.
-    5. **Expert Opinion**: Quotes and deep interpretation.
-    6. **External Link**: One link to BBC/Transfermarkt.
-    7. **FAQ**: 3 Questions.
-
-    # STYLE:
+    # RULES:
+    - NO GENERIC HEADERS. Use creative sub-headlines.
     - NO EMOJIS.
-    - Professional, Analytical.
+    
+    # EXTERNAL LINKING STRATEGY (CRITICAL):
+    - Do NOT always link to BBC.
+    - Select ONE most relevant source from this list: [{selected_sources}].
+    - Example: "According to recent data from [Source Name](URL)..."
+    - The link must be natural within the text.
+
+    # STRUCTURE:
+    1. Exec Summary (Blockquote).
+    2. Deep Dive Analysis.
+    3. Mandatory Data Table.
+    4. Also Read: {internal_links_map}
+    5. Quotes & Reaction.
+    6. External Authority Link (See rule above).
+    7. FAQ.
     """
 
     user_prompt = f"""
@@ -189,7 +205,7 @@ def get_groq_article_seo(title, summary, link, internal_links_map, target_catego
     Summary: {summary}
     Link: {link}
     
-    Write now. Remember: BANNED WORDS apply to all headers. Make every H2 unique to the story.
+    Write the 1200-word masterpiece now. Ensure varied sources.
     """
 
     for api_key in GROQ_API_KEYS:
@@ -203,7 +219,7 @@ def get_groq_article_seo(title, summary, link, internal_links_map, target_catego
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt}
                     ],
-                    temperature=0.75, # Kreativitas Tinggi untuk Judul Unik
+                    temperature=0.75, 
                     max_tokens=7500,
                 )
                 return completion.choices[0].message.content
@@ -237,26 +253,24 @@ def main():
 
             print(f"   🔥 Processing: {clean_title[:40]}...")
             
-            # 1. AI Text
             context = get_internal_links_context()
             raw_response = get_groq_article_seo(clean_title, entry.summary, entry.link, context, category_name)
+            
             if not raw_response: continue
 
-            data = parse_ai_response(raw_response)
+            data = parse_ai_response(raw_response, clean_title, entry.summary)
             if not data: continue
 
-            # 2. Image
             img_name = f"{slug}.jpg"
-            has_img = download_and_optimize_image(data['main_keyword'], img_name)
+            keyword_for_image = data.get('main_keyword') or clean_title
+            has_img = download_and_optimize_image(keyword_for_image, img_name)
             final_img = f"/images/{img_name}" if has_img else "/images/default-football.jpg"
             
-            # 3. Save
             date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S+00:00")
             tags_list = data.get('lsi_keywords', [])
             if data.get('main_keyword'): tags_list.append(data['main_keyword'])
             tags_str = json.dumps(tags_list)
-            
-            img_alt = data.get('image_alt', data['title']).replace('"', "'")
+            img_alt = data.get('image_alt', clean_title).replace('"', "'")
             
             md = f"""---
 title: "{data['title']}"
