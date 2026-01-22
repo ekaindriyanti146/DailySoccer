@@ -35,15 +35,12 @@ AUTHORITY_SOURCES = [
     "WhoScored", "BBC Sport", "The Guardian", "UEFA Official", "ESPN FC"
 ]
 
-# --- DAFTAR GAMBAR CADANGAN (JIKA DOWNLOAD GAGAL) ---
-# Agar tidak muncul gambar kosong/sama terus
+# --- FALLBACK IMAGES (JIKA BING BLOKIR/GAGAL) ---
 FALLBACK_IMAGES = [
     "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80", # Stadium
-    "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&w=1200&q=80", # Ball on grass
+    "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&w=1200&q=80", # Ball grass
     "https://images.unsplash.com/photo-1556056504-5c7696c4c28d?auto=format&fit=crop&w=1200&q=80", # Fans
-    "https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=1200&q=80", # Action
-    "https://images.unsplash.com/photo-1522778119026-d647f0565c6a?auto=format&fit=crop&w=1200&q=80", # Goal net
-    "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=1200&q=80", # Ball
+    "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=1200&q=80", # Ball generic
     "https://images.unsplash.com/photo-1518605348487-73d9d3dc2345?auto=format&fit=crop&w=1200&q=80"  # Silhouette
 ]
 
@@ -100,11 +97,11 @@ def clean_text(text):
     cleaned = cleaned.strip()
     return cleaned
 
-# --- IMAGE ENGINE (VARIASI ACAK) ---
+# --- IMAGE ENGINE (ANTI-DUPLICATE & FALLBACK) ---
 def download_and_optimize_image(query, filename):
-    # Trik: Tambahkan kata acak agar hasil pencarian selalu beda
-    random_suffix = random.choice(["stadium atmosphere", "fans cheering", "match action", "soccer ball", "grass field", "night match"])
-    clean_query = f"{query} {random_suffix}".replace(" ", "+")
+    # 1. Randomize Query agar hasil tidak selalu sama
+    suffixes = ["stadium atmosphere", "match action", "fans cheering", "soccer field", "night match"]
+    clean_query = f"{query} {random.choice(suffixes)}".replace(" ", "+")
     
     image_url = f"https://tse2.mm.bing.net/th?q={clean_query}&w=1280&h=720&c=7&rs=1&p=0"
     print(f"      🔍 Fetching Image: {clean_query}...")
@@ -114,7 +111,10 @@ def download_and_optimize_image(query, filename):
         response = requests.get(image_url, headers=headers, timeout=20)
         
         if response.status_code == 200:
-            if "image" not in response.headers.get("content-type", ""): return None
+            if "image" not in response.headers.get("content-type", ""): 
+                print("      ⚠️ Not an image. Using fallback.")
+                return random.choice(FALLBACK_IMAGES)
+
             img = Image.open(BytesIO(response.content))
             img = img.convert("RGB")
             
@@ -131,17 +131,16 @@ def download_and_optimize_image(query, filename):
             output_path = f"{IMAGE_DIR}/{filename}"
             img.save(output_path, "JPEG", quality=92, optimize=True)
             
-            # Berhasil download, return path lokal
-            return f"/images/{filename}"
+            return f"/images/{filename}" # Berhasil download lokal
             
     except Exception as e:
-        print(f"      ⚠️ Image Download Fail: {e}")
+        print(f"      ⚠️ Image Error: {e}")
     
-    # JIKA GAGAL DOWNLOAD -> Return Salah Satu Gambar Cadangan Acak
+    # 2. Jika Gagal, Return Random Fallback URL
     print("      ⚠️ Using Random Fallback Image.")
     return random.choice(FALLBACK_IMAGES)
 
-# --- AI WRITER ENGINE ---
+# --- AI WRITER ENGINE (BULLETPROOF PARSER) ---
 def parse_ai_response(text, fallback_title, fallback_desc):
     try:
         parts = text.split("|||BODY_START|||")
@@ -158,6 +157,7 @@ def parse_ai_response(text, fallback_title, fallback_desc):
             return data
     except Exception: pass
     
+    # Fallback jika JSON rusak
     clean_body = re.sub(r'\{.*\}', '', text, flags=re.DOTALL).replace("|||BODY_START|||", "").strip()
     return {
         "title": clean_text(fallback_title),
@@ -170,14 +170,15 @@ def parse_ai_response(text, fallback_title, fallback_desc):
     }
 
 def get_groq_article_seo(title, summary, link, internal_links_block, target_category):
-    AVAILABLE_MODELS = ["llama-3.3-70b-versatile"]
+    # DAFTAR MODEL (PRIORITAS + CADANGAN)
+    AVAILABLE_MODELS = ["llama-3.3-70b-versatile", "mixtral-8x7b-32768", "llama-3.1-8b-instant"]
     selected_sources = ", ".join(random.sample(AUTHORITY_SOURCES, 3))
     
     system_prompt = f"""
     You are Dave Harsya, a Senior Football Analyst for 'Soccer Daily'.
     TARGET CATEGORY: {target_category}
     
-    GOAL: Write a 1200+ word article with UNIQUE HEADERS.
+    GOAL: Write a 1200+ word article with UNIQUE HEADERS & DIVERSE SOURCES.
     
     OUTPUT FORMAT (JSON):
     {{
@@ -186,13 +187,13 @@ def get_groq_article_seo(title, summary, link, internal_links_block, target_cate
         "category": "{target_category}",
         "main_keyword": "Entity Name",
         "lsi_keywords": ["keyword1"],
-        "image_alt": "Descriptive text"
+        "image_alt": "Descriptive text for image"
     }}
     |||BODY_START|||
     [Markdown Content]
 
     # RULES:
-    - NO GENERIC HEADERS. Use creative sub-headlines.
+    - NO GENERIC HEADERS (e.g. "Introduction"). Use creative sub-headlines.
     - NO EMOJIS.
     
     # INTERNAL LINKING:
@@ -201,13 +202,13 @@ def get_groq_article_seo(title, summary, link, internal_links_block, target_cate
     {internal_links_block}
     BLOCK END.
 
- # STRUCTURE:
+    # STRUCTURE:
     1. Executive Summary (Blockquote).
     2. Deep Dive Analysis (Unique H2).
     3. Mandatory Data Table (Unique H2).
-    4. **Read More** (Insert the block provided above).
+    4. **Read More** (Paste Block Above).
     5. Quotes & Reaction (Unique H2).
-    6. External_Authority_Link (Unique H2, Source: {selected_sources}).
+    6. External Authority Link (Source: {selected_sources}).
     7. FAQ.
     """
 
@@ -230,12 +231,16 @@ def get_groq_article_seo(title, summary, link, internal_links_block, target_cate
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt}
                     ],
-                    temperature=0.7, 
+                    temperature=0.75, 
                     max_tokens=7500,
                 )
                 return completion.choices[0].message.content
-            except RateLimitError: continue
-            except Exception: continue
+            except RateLimitError:
+                print(f"      ⚠️ Limit hit on {model}, switching...")
+                continue
+            except Exception as e:
+                print(f"      ⚠️ Error: {e}")
+                continue
             
     return None
 
@@ -272,11 +277,11 @@ def main():
             data = parse_ai_response(raw_response, clean_title, entry.summary)
             if not data: continue
 
-            # IMAGE PROCESSING UPGRADED
+            # IMAGE PROCESSING (WITH FALLBACK)
             img_name = f"{slug}.jpg"
             keyword_for_image = data.get('main_keyword') or clean_title
             
-            # Fungsi ini sekarang me-return Path (String), bukan Boolean
+            # Variable ini berisi Path Lokal ATAU URL Remote (jika fallback)
             final_img = download_and_optimize_image(keyword_for_image, img_name)
             
             date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S+00:00")
