@@ -1,23 +1,22 @@
 ---
 title: "Editorial Policy & Standards"
-date: 2024-01-01
-description: "Our commitment to accuracy, integrity, and high-quality journalism."
+description: "Our commitment to accuracy, integrity, and transparent journalism."
 draft: false
 layout: "page"
 ---
 
-## Our Commitment to Accuracy
+## 1. Commitment to Accuracy
+Trust is the currency of journalism. At Soccer Daily, we employ a rigorous fact-checking process. Every article is reviewed for statistical accuracy and factual correctness. If an error occurs, we are committed to correcting it promptly and transparently with a standardized "Correction Note" at the bottom of the article.
 
-At **Soccer Daily**, trust is our currency. We are committed to providing accurate, fact-checked, and timely information to our readers.
+## 2. Sourcing & Attribution
+We believe in giving credit where it is due.
+*   **Official Sources:** We prioritize data from official league bodies, clubs, and reputable data providers (Opta/StatsPerform).
+*   **Transfer News:** We distinguish between "Official Confirmations," "Reports from Credible Outlets," and "Rumors." We do not publish unsubstantiated clickbait.
 
-### Fact-Checking Process
-Every article published on Soccer Daily undergoes a rigorous review process:
-1.  **Source Verification**: We only cite credible sources (Official Club Statements, Tier 1 Journalists, reputable Statistical Databases).
-2.  **Data Validation**: Statistical claims are cross-referenced with Opta, FBref, or Transfermarkt data.
-3.  **Correction Policy**: If an error is identified, we commit to correcting it immediately and adding a transparent "Correction Note" at the bottom of the article.
+## 3. Use of Technology & AI
+Soccer Daily utilizes advanced technology to assist in data aggregation, trend monitoring, and structuring historical data. However, **human oversight is mandatory**.
+*   AI tools are used as *assistants* for research and structure.
+*   All opinions, tactical breakdowns, and final editorial approvals are conducted by human analysts to ensure nuance, context, and emotional intelligence.
 
-### AI & Technology Use
-We utilize advanced technology to assist in data gathering and structuring. However, all final analysis, opinions, and editorial decisions are overseen by human editors to ensure nuance and context that technology alone cannot provide.
-
-### Independence
-Soccer Daily is an independent publication. We are not affiliated with any specific football club, league, or governing body. Our analysis is unbiased and free from external influence.
+## 4. Conflict of Interest
+Our writers and analysts are required to disclose any potential conflicts of interest. Soccer Daily maintains strict independence from any football club, agency, or betting organization.
