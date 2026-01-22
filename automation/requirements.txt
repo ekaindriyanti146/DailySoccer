@@ -2,5 +2,4 @@ requests
 feedparser
 python-slugify
 Pillow
-groq
-duckduckgo-search==6.4.2
+groq 
