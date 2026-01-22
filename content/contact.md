@@ -5,25 +5,61 @@ draft: false
 layout: "page"
 ---
 
-We value feedback from our readers and partners. Please direct your inquiries to the appropriate department below.
+We value feedback from our readers and partners. If you have a correction, a news tip, or an advertising inquiry, please use the secure form below. Our team typically responds within 24-48 hours.
 
-### 📧 Editorial Team
-For corrections, news tips, or feedback on our coverage:
-**editor@soccerdaily.com**
+<!-- FORMULIR KONTAK PROFESIONAL (Tailwind Styled + Formspree Integrated) -->
+<div class="mt-8 p-8 bg-gray-50 border border-gray-200 rounded-lg shadow-sm">
+    
+    <!-- 
+      Form ini sudah terhubung ke akun Formspree Anda (mnjjerad).
+      Email pengunjung akan langsung masuk ke inbox Anda tanpa mengekspos alamat email Anda.
+    -->
+    <form action="https://formspree.io/f/mnjjerad" method="POST" class="space-y-6">
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Nama -->
+            <div>
+                <label for="name" class="block text-sm font-bold text-gray-700 uppercase tracking-wide mb-2">Name</label>
+                <input type="text" name="name" id="name" required 
+                       class="w-full px-4 py-3 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition"
+                       placeholder="Your Name">
+            </div>
+            
+            <!-- Email (Wajib ada name="email" agar Formspree tahu mau balas kemana) -->
+            <div>
+                <label for="email" class="block text-sm font-bold text-gray-700 uppercase tracking-wide mb-2">Email Address</label>
+                <input type="email" name="email" id="email" required 
+                       class="w-full px-4 py-3 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition"
+                       placeholder="name@example.com">
+            </div>
+        </div>
 
-### 💼 Advertising & Partnerships
-For media kits, sponsorship opportunities, and advertising rates:
-**ads@soccerdaily.com**
+        <!-- Subject -->
+        <div>
+            <label for="subject" class="block text-sm font-bold text-gray-700 uppercase tracking-wide mb-2">Inquiry Type</label>
+            <select name="subject" id="subject" class="w-full px-4 py-3 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:border-red-600 transition">
+                <option value="General Inquiry">General Inquiry</option>
+                <option value="Editorial Tip">Editorial / News Tip</option>
+                <option value="Advertising">Advertising & Partnership</option>
+                <option value="Technical Issue">Report a Website Bug</option>
+            </select>
+        </div>
 
-### 🔧 Technical Support
-Reporting a broken link or site issue:
-**support@soccerdaily.com**
+        <!-- Pesan -->
+        <div>
+            <label for="message" class="block text-sm font-bold text-gray-700 uppercase tracking-wide mb-2">Message</label>
+            <textarea name="message" id="message" rows="5" required
+                      class="w-full px-4 py-3 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition"
+                      placeholder="How can we help you?"></textarea>
+        </div>
 
----
-
-### Mailing Address
-**Soccer Daily Media Group**
-Menara Digital, Level 15
-Jakarta, Indonesia, 12190
-
-*(Please note: Unsolicited manuscripts or physical mail may not receive a response.)*
+        <!-- Tombol Kirim -->
+        <button type="submit" class="w-full bg-red-600 text-white font-black uppercase tracking-widest py-4 rounded hover:bg-red-700 transition duration-300 shadow-lg cursor-pointer">
+            Send Message
+        </button>
+        
+        <p class="text-xs text-gray-400 text-center mt-4">
+            By submitting this form, you agree to our <a href="/privacy-policy" class="underline hover:text-red-600">Privacy Policy</a>.
+        </p>
+    </form>
+</div>
