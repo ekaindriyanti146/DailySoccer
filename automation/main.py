@@ -201,12 +201,12 @@ def get_groq_article_seo(title, summary, link, internal_links_block, target_cate
     {internal_links_block}
     BLOCK END.
 
-    # STRUCTURE:
+ # STRUCTURE:
     1. Executive Summary (Blockquote).
-    2. Deep Dive Analysis.
-    3. Mandatory Data Table.
-    4. **Read More Section** (Paste Block Above).
-    5. Quotes & Reaction.
+    2. Deep Dive Analysis (Unique H2).
+    3. Mandatory Data Table (Unique H2).
+    4. **Read More Section** (Insert the block provided above).
+    5. Quotes & Reaction (Unique H2).
     6. External Authority Link (Source: {selected_sources}).
     7. FAQ.
     """
