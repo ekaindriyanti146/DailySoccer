@@ -20,7 +20,6 @@ if not GROQ_API_KEYS:
     exit(1)
 
 # --- CATEGORY RSS FEED (GLOBAL SOURCES) ---
-# Tips: Google News RSS sering memblokir bot, kita akan menanganinya di fungsi fetch_rss_feed
 CATEGORY_URLS = {
     "Transfer News": "https://news.google.com/rss/search?q=football+transfer+news+Fabrizio+Romano+here+we+go+when:1d&hl=en-GB&gl=GB&ceid=GB:en",
     "Premier League": "https://news.google.com/rss/search?q=Premier+League+news+match+result+analysis+when:1d&hl=en-GB&gl=GB&ceid=GB:en",
@@ -61,37 +60,29 @@ def get_internal_links_context():
 
 # --- ROBUST RSS FETCHER (ANTI-BLOCK) ---
 def fetch_rss_feed(url):
-    """
-    Mengambil RSS dengan Header Browser agar tidak diblokir Google/Server News.
-    """
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
         'Referer': 'https://www.google.com/'
     }
-    
     try:
-        # Request manual pakai 'requests' dulu
         response = requests.get(url, headers=headers, timeout=15)
-        
-        # Cek status code
         if response.status_code != 200:
             print(f"   ⚠️ Status Code Error: {response.status_code}")
             return None
-            
-        # Parse contentnya menggunakan feedparser
-        feed = feedparser.parse(response.content)
-        return feed
+        return feedparser.parse(response.content)
     except Exception as e:
         print(f"   ⚠️ Connection Error: {e}")
         return None
 
-# --- CLEANING FUNCTION ---
+# --- CLEANING FUNCTION (YAML SAFE) ---
 def clean_text(text):
     if not text: return ""
+    # Hapus markdown
     cleaned = text.replace("**", "").replace("__", "").replace("##", "")
-    cleaned = cleaned.strip().strip('"').strip("'")
+    # Ganti kutip dua (") dengan kutip satu (') agar tidak merusak Frontmatter
+    cleaned = cleaned.replace('"', "'") 
+    cleaned = cleaned.strip()
     return cleaned
 
 # --- DISCOVER-READY IMAGE ENGINE ---
@@ -129,7 +120,7 @@ def download_and_optimize_image(query, filename):
     
     return False
 
-# --- AI WRITER ENGINE (SEO 2026 STRATEGY) ---
+# --- AI WRITER ENGINE ---
 def parse_ai_response(text):
     try:
         parts = text.split("|||BODY_START|||")
@@ -140,10 +131,9 @@ def parse_ai_response(text):
         json_part = re.sub(r'```', '', json_part)
         data = json.loads(json_part)
         
-        # BERSIHKAN JUDUL
+        # CLEANING DATA
         data['title'] = clean_text(data.get('title', ''))
         data['description'] = clean_text(data.get('description', ''))
-        
         data['content'] = body_part
         return data
     except Exception as e:
@@ -151,7 +141,6 @@ def parse_ai_response(text):
         return None
 
 def get_groq_article_seo(title, summary, link, internal_links_map, target_category):
-    # Smart Fallback Models
     AVAILABLE_MODELS = [
         "llama-3.3-70b-versatile", 
         "mixtral-8x7b-32768", 
@@ -170,18 +159,17 @@ def get_groq_article_seo(title, summary, link, internal_links_map, target_catego
     [Markdown Content]
 
     # RULES FOR TITLE:
-    - ABSOLUTELY NO MARKDOWN (**bold**, *italic*) in the JSON 'title' field. Plain text only.
-    - Make it punchy: "TACTICAL BREAKDOWN:", "REVEALED:", "WHY [Player] FAILED:"
+    - ABSOLUTELY NO MARKDOWN (**bold**) or QUOTES (") inside the JSON field.
+    - Make it punchy: "TACTICAL BREAKDOWN:", "REVEALED:"
 
     # CONTENT STRATEGY (Also Read Logic):
     1. **Introduction**: Start with a Hook. Bold the **Main Keyword**.
-    2. **Tactical Analysis**: Use professional terms (Half-spaces, xG, High-line, Pivot).
+    2. **Tactical Analysis**: Use professional terms.
     3. **Key Stats**: Create a bullet list.
     4. **🚀 Also Read Section**:
        - INSERT THIS EXACTLY IN THE MIDDLE:
        - "### 🚀 Also Read"
        - Create 3 bullet points linking to: {internal_links_map}.
-       - Format: "* [Related Headline](/articles/slug)"
     5. **Fan Sentiment**: Social media reaction.
     6. **FAQ**: 3 Questions for Voice Search.
     
@@ -233,7 +221,6 @@ def main():
     for category_name, rss_url in CATEGORY_URLS.items():
         print(f"\n📡 Fetching Category: {category_name}...")
         
-        # PANGGIL FUNGSI FETCHER BARU
         feed = fetch_rss_feed(rss_url)
         
         if not feed or not feed.entries:
@@ -272,9 +259,11 @@ def main():
             # 3. Save
             date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S+00:00")
             
+            # --- FIX YAML ERROR ---
+            # Menggunakan json.dumps agar kutip ' di dalam kata (Women's) ter-escape dengan benar
             tags_list = data.get('lsi_keywords', [])
             if data.get('main_keyword'): tags_list.append(data['main_keyword'])
-            tags_str = str(tags_list).replace("'", '"')
+            tags_str = json.dumps(tags_list)
             
             md = f"""---
 title: "{data['title']}"
