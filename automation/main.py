@@ -8,7 +8,7 @@ import random
 from datetime import datetime
 from slugify import slugify
 from io import BytesIO
-from PIL import Image, ImageEnhance, ImageOps, ImageFilter
+from PIL import Image, ImageEnhance, ImageOps
 from groq import Groq, APIError, RateLimitError, BadRequestError
 
 # --- CONFIGURATION ---
@@ -19,14 +19,14 @@ if not GROQ_API_KEYS:
     print("❌ FATAL ERROR: Groq API Key is missing!")
     exit(1)
 
-# --- CATEGORY RSS FEED (GLOBAL/ENGLISH) ---
+# --- CATEGORY RSS FEED (GLOBAL SOURCES) ---
 CATEGORY_URLS = {
     "Transfer News": "https://news.google.com/rss/search?q=football+transfer+news+Fabrizio+Romano+here+we+go+when:1d&hl=en-GB&gl=GB&ceid=GB:en",
-    "Premier League": "https://news.google.com/rss/search?q=Premier+League+news+match+result+highlights+when:1d&hl=en-GB&gl=GB&ceid=GB:en",
+    "Premier League": "https://news.google.com/rss/search?q=Premier+League+news+match+result+analysis+when:1d&hl=en-GB&gl=GB&ceid=GB:en",
     "Champions League": "https://news.google.com/rss/search?q=UEFA+Champions+League+news+when:1d&hl=en-GB&gl=GB&ceid=GB:en",
     "La Liga": "https://news.google.com/rss/search?q=La+Liga+Real+Madrid+Barcelona+news+when:1d&hl=en-GB&gl=GB&ceid=GB:en",
-    "International Football": "https://news.google.com/rss/search?q=International+Football+news+FIFA+World+Cup+when:1d&hl=en-GB&gl=GB&ceid=GB:en",
-    "Match Predictions": "https://news.google.com/rss/search?q=football+match+prediction+preview+predicted+lineup+when:1d&hl=en-GB&gl=GB&ceid=GB:en"
+    "International": "https://news.google.com/rss/search?q=International+Football+news+FIFA+World+Cup+when:1d&hl=en-GB&gl=GB&ceid=GB:en",
+    "Tactical Analysis": "https://news.google.com/rss/search?q=football+tactical+analysis+prediction+preview+when:1d&hl=en-GB&gl=GB&ceid=GB:en"
 }
 
 CONTENT_DIR = "content/articles"
@@ -58,51 +58,35 @@ def get_internal_links_context():
         items = random.sample(items, 30)
     return json.dumps(dict(items))
 
-# --- DISCOVER-READY IMAGE ENGINE (DIRECT STREAM) ---
-def add_subtle_noise(img, intensity=0.02):
-    width, height = img.size
-    pixels = img.load()
-    for x in range(width):
-        for y in range(height):
-            if random.random() < 0.1:
-                r, g, b = pixels[x, y]
-                noise = random.randint(int(-255 * intensity), int(255 * intensity))
-                r = max(0, min(255, r + noise))
-                g = max(0, min(255, g + noise))
-                b = max(0, min(255, b + noise))
-                pixels[x, y] = (r, g, b)
-    return img
-
+# --- DISCOVER-READY IMAGE ENGINE (Direct Stream) ---
 def download_and_optimize_image(query, filename):
     clean_query = query.replace(" ", "+")
-    # Request HD Image for Discover (1280x720)
-    image_url = f"https://tse2.mm.bing.net/th?q={clean_query}+football+match+photo&w=1280&h=720&c=7&rs=1&p=0"
+    # HD Image for Discover (1280x720)
+    image_url = f"https://tse2.mm.bing.net/th?q={clean_query}+football+match+action+photo&w=1280&h=720&c=7&rs=1&p=0"
     
-    print(f"      🔍 Fetching Discover Image: {query}...")
+    print(f"      🔍 Fetching High-Res Image: {query}...")
     
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'}
         response = requests.get(image_url, headers=headers, timeout=20)
         
         if response.status_code == 200:
-            if "image" not in response.headers.get("content-type", ""):
-                return False
+            if "image" not in response.headers.get("content-type", ""): return False
 
             img = Image.open(BytesIO(response.content))
             img = img.convert("RGB")
             
-            # 1. Smart Crop & Resize for Discover (1200x675 is the Golden Ratio 16:9)
+            # 1. Smart Crop (Remove watermarks)
             width, height = img.size
             img = img.crop((width*0.1, height*0.1, width*0.9, height*0.9)) 
+            
+            # 2. Resize to 1200x675 (Perfect 16:9 for Discover)
             img = img.resize((1200, 675), Image.Resampling.LANCZOS)
             
-            # 2. Mirror & Hash Busting (SEO Unique Image)
+            # 3. Mirroring & Enhancement
             img = ImageOps.mirror(img) 
-            img = add_subtle_noise(img, intensity=0.05)
-            
-            # 3. Enhance
             enhancer = ImageEnhance.Sharpness(img)
-            img = enhancer.enhance(1.3)
+            img = enhancer.enhance(1.4)
             enhancer_col = ImageEnhance.Color(img)
             img = enhancer_col.enhance(1.1)
             
@@ -114,7 +98,7 @@ def download_and_optimize_image(query, filename):
     
     return False
 
-# --- AI WRITER ENGINE (HIGH SEO STRATEGY) ---
+# --- AI WRITER ENGINE (ENTITY SEO & VIRAL HEADLINES) ---
 def parse_ai_response(text):
     try:
         parts = text.split("|||BODY_START|||")
@@ -133,43 +117,54 @@ def parse_ai_response(text):
 def get_groq_article_seo(title, summary, link, internal_links_map, target_category):
     MODEL_NAME = "llama-3.3-70b-versatile"
     
-    # --- SUPER SEO PROMPT ---
+    # --- THE SUPER-SEO PROMPT ---
     system_prompt = f"""
-    You are an Expert SEO Football Journalist for 'Soccer Daily'.
+    You are a World-Class Football Editor & SEO Specialist for 'Soccer Daily'.
     TARGET CATEGORY: {target_category}
     
-    TASK: Write a Google-Discover-Ready article (800+ words) in ENGLISH.
+    GOAL: Write a VIRAL, High-Authority article (900+ words) that dominates Google Rankings.
     
     OUTPUT FORMAT (JSON REQUIRED):
-    {{"title": "High CTR Headline (Max 60 chars)", "description": "Meta Description with keywords (Max 155 chars)", "category": "{target_category}", "main_keyword": "Primary Keyword", "lsi_keywords": ["keyword1", "keyword2"]}}
+    {{"title": "VIRAL HEADLINE (See Rules)", "description": "Meta description with urgency (Max 155 chars)", "category": "{target_category}", "main_keyword": "Entity Name", "lsi_keywords": ["keyword1", "keyword2"]}}
     |||BODY_START|||
     [Markdown Content]
 
-    SEO RULES (STRICT):
-    1. **Keyword Placement**: The 'main_keyword' MUST appear in the First Paragraph and at least one H2 header.
-    2. **Structure**: 
-       - H1 (Title)
-       - **Key Takeaways** (Bullet points)
-       - H2: Introduction (Context)
-       - H2: Deep Analysis / Tactical View
-       - H2: {target_category} Implications
-       - H3: Player/Manager Quotes (Simulated/Paraphrased)
-       - H2: Conclusion & Prediction
-    3. **Internal Linking**: Naturally weave in links from: {internal_links_map}. Format: [Anchor Text](/articles/slug).
-    4. **Engagement**: Use short paragraphs (max 3 sentences). Ask a question at the end to trigger comments.
+    HEADLINE RULES (CRITICAL):
+    - DO NOT use boring titles like "Match Report" or "Transfer News".
+    - USE POWER FORMULAS:
+      1. The "Reveal": "REVEALED: Why [Player] rejected [Club]..."
+      2. The "Reaction": "FANS FURIOUS! [Manager]'s decision that cost the game..."
+      3. The "Question": "Is it over? Why [Team] must sack [Manager] immediately..."
+      4. The "Data": "5 Stats proving [Player] is the best in the world right now..."
+    - Use CAPS for emphasis on one power word.
+
+    CONTENT STRUCTURE (SEO OPTIMIZED):
+    1. **The Hook**: First 50 words must grab attention. Bold the **Main Keyword**.
+    2. **Key Takeaways**: 3 Bullet points summarizing the story.
+    3. **H2: Deep Dive / Tactical Analysis**: Use jargon (xG, High Press, Low Block, Transition).
+    4. **H2: The Numbers Game**: Include stats/data.
+    5. **H2: Fan & Expert Reaction**: Quotes (simulated) and social sentiment.
+    6. **H2: Frequently Asked Questions (SEO Goldmine)**:
+       - Generate 3 "People Also Ask" questions related to this topic.
+       - Answer them concisely.
+    7. **Internal Links**: Weave these links naturally: {internal_links_map}.
+
+    ENTITY SEO INSTRUCTIONS:
+    - BOLD important Entities (Player Names, Clubs, Managers) on first mention.
+    - Use semantic variations (e.g., instead of just "Liverpool", use "The Reds", "Anfield Side", "Slot's Army").
     """
 
     user_prompt = f"""
-    Breaking News: {title}
-    Summary: {summary}
+    Raw News: {title}
+    Context: {summary}
     Link: {link}
     
-    Write the SEO-optimized article now.
+    Write the masterpiece now.
     """
 
     for index, api_key in enumerate(GROQ_API_KEYS):
         try:
-            print(f"      🤖 AI Writing SEO Content ({target_category})...")
+            print(f"      🤖 AI Writing SEO Masterpiece ({target_category})...")
             client = Groq(api_key=api_key)
             completion = client.chat.completions.create(
                 model=MODEL_NAME,
@@ -177,8 +172,8 @@ def get_groq_article_seo(title, summary, link, internal_links_map, target_catego
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
-                temperature=0.7,
-                max_tokens=6000,
+                temperature=0.75, # Sedikit lebih kreatif untuk judul viral
+                max_tokens=6500,
             )
             return completion.choices[0].message.content
         except Exception as e:
@@ -214,8 +209,8 @@ def main():
                 break
 
             clean_title = entry.title.split(" - ")[0]
-            # SEO Friendly Slug (Short & Clean)
-            slug = slugify(clean_title)
+            # Membuat Slug yang lebih bersih (buang stop words agar SEO friendly)
+            slug = slugify(clean_title, max_length=60, word_boundary=True)
             filename = f"{slug}.md"
 
             if os.path.exists(f"{CONTENT_DIR}/{filename}"):
@@ -237,13 +232,13 @@ def main():
             has_img = download_and_optimize_image(data['main_keyword'], img_name)
             final_img = f"/images/{img_name}" if has_img else "/images/default-football.jpg"
             
-            # 3. Save (With Extended Frontmatter for SEO)
+            # 3. Save (Frontmatter Lengkap)
             date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S+00:00")
             
-            # Menyiapkan Tags/Keywords untuk Frontmatter
+            # Menyiapkan tags untuk SEO Schema
             tags_list = data.get('lsi_keywords', [])
-            tags_list.append(data['main_keyword'])
-            tags_str = str(tags_list).replace("'", '"') # Format JSON array string
+            if data.get('main_keyword'): tags_list.append(data['main_keyword'])
+            tags_str = str(tags_list).replace("'", '"')
             
             md = f"""---
 title: "{data['title'].replace('"', "'")}"
