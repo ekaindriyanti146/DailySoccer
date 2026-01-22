@@ -54,14 +54,23 @@ def save_link_to_memory(keyword, slug):
 def get_internal_links_context():
     memory = load_link_memory()
     items = list(memory.items())
-    if len(items) > 30:
-        items = random.sample(items, 30)
+    if len(items) > 5:
+        # Ambil 5 link acak untuk bahan "Also Read"
+        items = random.sample(items, 5)
     return json.dumps(dict(items))
 
-# --- DISCOVER-READY IMAGE ENGINE (Direct Stream) ---
+# --- CLEANING FUNCTION (Fix Judul Bintang-Bintang) ---
+def clean_text(text):
+    """Membersihkan simbol markdown dari Judul/Deskripsi"""
+    if not text: return ""
+    # Hapus bold markdown (**text**), italic (*text*), dan hash (#)
+    cleaned = text.replace("**", "").replace("__", "").replace("##", "")
+    cleaned = cleaned.strip().strip('"').strip("'")
+    return cleaned
+
+# --- DISCOVER-READY IMAGE ENGINE ---
 def download_and_optimize_image(query, filename):
     clean_query = query.replace(" ", "+")
-    # HD Image for Discover (1280x720)
     image_url = f"https://tse2.mm.bing.net/th?q={clean_query}+football+match+action+photo&w=1280&h=720&c=7&rs=1&p=0"
     
     print(f"      🔍 Fetching High-Res Image: {query}...")
@@ -76,14 +85,12 @@ def download_and_optimize_image(query, filename):
             img = Image.open(BytesIO(response.content))
             img = img.convert("RGB")
             
-            # 1. Smart Crop (Remove watermarks)
+            # Smart Crop & Resize
             width, height = img.size
             img = img.crop((width*0.1, height*0.1, width*0.9, height*0.9)) 
-            
-            # 2. Resize to 1200x675 (Perfect 16:9 for Discover)
             img = img.resize((1200, 675), Image.Resampling.LANCZOS)
             
-            # 3. Mirroring & Enhancement
+            # Enhance
             img = ImageOps.mirror(img) 
             enhancer = ImageEnhance.Sharpness(img)
             img = enhancer.enhance(1.4)
@@ -98,7 +105,7 @@ def download_and_optimize_image(query, filename):
     
     return False
 
-# --- AI WRITER ENGINE (ENTITY SEO & VIRAL HEADLINES) ---
+# --- AI WRITER ENGINE (SEO 2026 STRATEGY) ---
 def parse_ai_response(text):
     try:
         parts = text.split("|||BODY_START|||")
@@ -108,6 +115,11 @@ def parse_ai_response(text):
         json_part = re.sub(r'```json\s*', '', json_part)
         json_part = re.sub(r'```', '', json_part)
         data = json.loads(json_part)
+        
+        # --- FIX PENTING: BERSIHKAN JUDUL DARI MARKDOWN ---
+        data['title'] = clean_text(data.get('title', ''))
+        data['description'] = clean_text(data.get('description', ''))
+        
         data['content'] = body_part
         return data
     except Exception as e:
@@ -115,70 +127,74 @@ def parse_ai_response(text):
         return None
 
 def get_groq_article_seo(title, summary, link, internal_links_map, target_category):
-    MODEL_NAME = "llama-3.3-70b-versatile"
+    AVAILABLE_MODELS = [
+        "llama-3.3-70b-versatile", 
+        "mixtral-8x7b-32768", 
+        "llama-3.1-8b-instant"
+    ]
     
-    # --- THE SUPER-SEO PROMPT ---
+    # --- STRATEGI SEO 2026: E-E-A-T & CONTENT CLUSTER ---
     system_prompt = f"""
-    You are a World-Class Football Editor & SEO Specialist for 'Soccer Daily'.
+    You are a Senior Football Analyst & SEO Expert for 'Soccer Daily'.
     TARGET CATEGORY: {target_category}
     
-    GOAL: Write a VIRAL, High-Authority article (900+ words) that dominates Google Rankings.
+    GOAL: Write a Deep-Dive Analysis article (1000+ words) that ranks #1 on Google.
     
     OUTPUT FORMAT (JSON REQUIRED):
-    {{"title": "VIRAL HEADLINE (See Rules)", "description": "Meta description with urgency (Max 155 chars)", "category": "{target_category}", "main_keyword": "Entity Name", "lsi_keywords": ["keyword1", "keyword2"]}}
+    {{"title": "Clean Headline (NO MARKDOWN SYMBOLS)", "description": "Meta description (Max 155 chars)", "category": "{target_category}", "main_keyword": "Entity Name", "lsi_keywords": ["keyword1", "keyword2"]}}
     |||BODY_START|||
     [Markdown Content]
 
-    HEADLINE RULES (CRITICAL):
-    - DO NOT use boring titles like "Match Report" or "Transfer News".
-    - USE POWER FORMULAS:
-      1. The "Reveal": "REVEALED: Why [Player] rejected [Club]..."
-      2. The "Reaction": "FANS FURIOUS! [Manager]'s decision that cost the game..."
-      3. The "Question": "Is it over? Why [Team] must sack [Manager] immediately..."
-      4. The "Data": "5 Stats proving [Player] is the best in the world right now..."
-    - Use CAPS for emphasis on one power word.
+    # RULES FOR TITLE:
+    - ABSOLUTELY NO MARKDOWN (**bold**, *italic*) in the JSON 'title' field. Plain text only.
+    - Make it punchy: "TACTICAL BREAKDOWN:", "REVEALED:", "WHY [Player] FAILED:"
 
-    CONTENT STRUCTURE (SEO OPTIMIZED):
-    1. **The Hook**: First 50 words must grab attention. Bold the **Main Keyword**.
-    2. **Key Takeaways**: 3 Bullet points summarizing the story.
-    3. **H2: Deep Dive / Tactical Analysis**: Use jargon (xG, High Press, Low Block, Transition).
-    4. **H2: The Numbers Game**: Include stats/data.
-    5. **H2: Fan & Expert Reaction**: Quotes (simulated) and social sentiment.
-    6. **H2: Frequently Asked Questions (SEO Goldmine)**:
-       - Generate 3 "People Also Ask" questions related to this topic.
-       - Answer them concisely.
-    7. **Internal Links**: Weave these links naturally: {internal_links_map}.
-
-    ENTITY SEO INSTRUCTIONS:
-    - BOLD important Entities (Player Names, Clubs, Managers) on first mention.
-    - Use semantic variations (e.g., instead of just "Liverpool", use "The Reds", "Anfield Side", "Slot's Army").
+    # CONTENT STRATEGY (The "Also Read" Logic):
+    1. **Introduction**: Start with a Hook. Bold the **Main Keyword**.
+    2. **Tactical Analysis**: Use professional terms (Half-spaces, xG, High-line, Pivot). Don't just report, ANALYZE.
+    3. **Key Stats**: Create a bullet list of key performance data.
+    4. **🚀 Also Read Section**:
+       - INSERT THIS EXACTLY IN THE MIDDLE OF THE ARTICLE:
+       - "### 🚀 Also Read"
+       - Create 3 bullet points linking to: {internal_links_map}.
+       - Format: "* [Anchor Text related to link](/articles/slug)"
+    5. **Fan Sentiment**: What are the fans saying on social media?
+    6. **FAQ Section**: 3 Questions & Answers for Voice Search Snippets.
+    
+    # TONE:
+    - Authoritative, Opinionated, Insightful. Like a Sky Sports Pundit.
     """
 
     user_prompt = f"""
-    Raw News: {title}
-    Context: {summary}
+    News Topic: {title}
+    Summary: {summary}
     Link: {link}
     
-    Write the masterpiece now.
+    Write the article now. Remember: NO MARKDOWN IN THE JSON TITLE.
     """
 
-    for index, api_key in enumerate(GROQ_API_KEYS):
-        try:
-            print(f"      🤖 AI Writing SEO Masterpiece ({target_category})...")
-            client = Groq(api_key=api_key)
-            completion = client.chat.completions.create(
-                model=MODEL_NAME,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=0.75, # Sedikit lebih kreatif untuk judul viral
-                max_tokens=6500,
-            )
-            return completion.choices[0].message.content
-        except Exception as e:
-            print(f"      ⚠️ Error (Key #{index+1}): {e}")
-            continue
+    for api_key in GROQ_API_KEYS:
+        client = Groq(api_key=api_key)
+        for model in AVAILABLE_MODELS:
+            try:
+                print(f"      🤖 AI Writing ({target_category}) using {model}...")
+                completion = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    temperature=0.7,
+                    max_tokens=6500,
+                )
+                return completion.choices[0].message.content
+
+            except RateLimitError:
+                print(f"      ⚠️ Rate Limit ({model}). Switching...")
+                continue
+            except Exception as e:
+                print(f"      ⚠️ Error: {e}")
+                continue
             
     return None
 
@@ -209,7 +225,6 @@ def main():
                 break
 
             clean_title = entry.title.split(" - ")[0]
-            # Membuat Slug yang lebih bersih (buang stop words agar SEO friendly)
             slug = slugify(clean_title, max_length=60, word_boundary=True)
             filename = f"{slug}.md"
 
@@ -232,22 +247,21 @@ def main():
             has_img = download_and_optimize_image(data['main_keyword'], img_name)
             final_img = f"/images/{img_name}" if has_img else "/images/default-football.jpg"
             
-            # 3. Save (Frontmatter Lengkap)
+            # 3. Save
             date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S+00:00")
             
-            # Menyiapkan tags untuk SEO Schema
             tags_list = data.get('lsi_keywords', [])
             if data.get('main_keyword'): tags_list.append(data['main_keyword'])
             tags_str = str(tags_list).replace("'", '"')
             
             md = f"""---
-title: "{data['title'].replace('"', "'")}"
+title: "{data['title']}"
 date: {date}
 author: "{AUTHOR_NAME}"
 categories: ["{data['category']}"]
 tags: {tags_str}
 featured_image: "{final_img}"
-description: "{data['description'].replace('"', "'")}"
+description: "{data['description']}"
 slug: "{slug}"
 draft: false
 ---
