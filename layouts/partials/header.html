@@ -10,7 +10,7 @@
     <!-- Main Header -->
     <div class="container mx-auto px-4 h-16 flex items-center justify-between">
         
-        <!-- LOGO (Style ala CBS: Simbol + Teks) -->
+        <!-- LOGO -->
         <a href="/" class="flex items-center group">
             <div class="w-8 h-8 rounded-full border-[3px] border-news-dark flex items-center justify-center mr-2 group-hover:bg-news-dark group-hover:border-transparent transition">
                 <div class="w-3 h-3 bg-news-dark rounded-full group-hover:bg-white"></div>
@@ -22,32 +22,40 @@
 
         <!-- Desktop Navigation -->
         <nav class="hidden lg:flex items-center space-x-6">
-            <!-- DAFTAR KATEGORI LENGKAP -->
             {{ $allowed := slice "Premier League" "Champions League" "La Liga" "World" "Transfer News" }}
             
             {{ range $allowed }}
                 {{ $name := . }}
-                <!-- Trik: Pakai 'urlize' agar spasi jadi strip -->
                 {{ $taxonomy := index $.Site.Taxonomies.categories ($name | urlize) }}
                 
-                <!-- Cek: Hanya munculkan jika ada artikelnya -->
                 {{ if $taxonomy }}
                 <a href="{{ "/categories/" | relLangURL }}{{ $name | urlize }}" 
-                   class="font-display font-bold text-sm text-gray-700 hover:text-news-red uppercase tracking-tight transition whitespace-nowrap">
+                   class="font-display font-bold text-sm text-gray-700 hover:text-red-600 uppercase tracking-tight transition whitespace-nowrap">
                     {{ . }}
                 </a>
                 {{ end }}
             {{ end }}
         </nav>
 
-        <!-- Right Side: Watch Live Button (UPDATED) -->
+        <!-- Right Side: Watch Live Button (EYE CATCHER VERSION) -->
         <div class="flex items-center">
-            <!-- Perubahan: Menggunakan tag <a> dengan class yang sama persis seperti button sebelumnya -->
-            <a href="https://wwp.ailooe.com/redirect-zone/058f7788" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 bg-transparent border border-gray-300 hover:border-news-red hover:text-news-red px-3 py-1.5 rounded-full transition group cursor-pointer text-gray-800">
-                <!-- Titik merah berkedip (tetap ada) -->
-                <div class="w-2 h-2 bg-news-red rounded-full animate-pulse"></div>
+            <a href="https://wwp.ailooe.com/redirect-zone/058f7788" 
+               target="_blank" 
+               rel="noopener noreferrer" 
+               class="group flex items-center gap-2 border-2 border-red-600 bg-white px-4 py-1.5 rounded-full transition-all duration-300 hover:bg-red-600 hover:text-white hover:shadow-lg hover:shadow-red-500/30">
+                
+                <!-- Ikon Record / Live (Titik Merah dengan Efek Ping) -->
+                <span class="relative flex h-3 w-3">
+                  <!-- Lingkaran luar yang membesar (animasi ping) -->
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                  <!-- Lingkaran dalam statis -->
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-red-600 group-hover:bg-white transition-colors"></span>
+                </span>
+                
                 <!-- Teks -->
-                <span class="text-xs font-bold uppercase tracking-wide">Watch Live</span>
+                <span class="text-xs font-black uppercase tracking-wider text-red-600 group-hover:text-white transition-colors">
+                    Watch Live
+                </span>
             </a>
         </div>
     </div>
