@@ -7,6 +7,11 @@ title = "US Daily Context"
   name = "US News Desk"
   email = "bot@usnews.ai"
 
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
+      
 # --- BAGIAN INI SANGAT PENTING ---
 [outputs]
   home = ["HTML", "RSS","Sitemap"]    # HTML Wajib di urutan pertama!
