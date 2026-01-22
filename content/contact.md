@@ -1,30 +1,29 @@
 ---
 title: "Contact Us"
-date: 2024-01-01
-description: "Get in touch with the Soccer Daily team."
+description: "Get in touch with the Soccer Daily editorial and business team."
 draft: false
 layout: "page"
 ---
 
-We'd love to hear from you. Whether you have a question about our analysis, a business inquiry, or feedback on our site, please don't hesitate to reach out.
+We value feedback from our readers and partners. Please direct your inquiries to the appropriate department below.
 
-## General Inquiries
+### 📧 Editorial Team
+For corrections, news tips, or feedback on our coverage:
+**editor@soccerdaily.com**
 
-For general questions, please email us at:
-📧 **hello@soccerdaily.com**
+### 💼 Advertising & Partnerships
+For media kits, sponsorship opportunities, and advertising rates:
+**ads@soccerdaily.com**
 
-## Advertising & Partnerships
-
-Interested in advertising on Soccer Daily? We offer bespoke packages for brands looking to reach passionate football fans.
-📧 **ads@soccerdaily.com**
-
-## Report a Technical Issue
-
-Found a bug or a broken link? Let our tech team know.
-📧 **support@soccerdaily.com**
+### 🔧 Technical Support
+Reporting a broken link or site issue:
+**support@soccerdaily.com**
 
 ---
 
-**Mailing Address:**
-Soccer Daily Media  
-Jakarta, Indonesia
+### Mailing Address
+**Soccer Daily Media Group**
+Menara Digital, Level 15
+Jakarta, Indonesia, 12190
+
+*(Please note: Unsolicited manuscripts or physical mail may not receive a response.)*
