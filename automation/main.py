@@ -111,7 +111,7 @@ def download_and_optimize_image(query, filename):
     except: pass
     return False
 
-# --- AI WRITER ENGINE (UNIQUE HEADER STRATEGY) ---
+# --- AI WRITER ENGINE (LONG FORM STRATEGY) ---
 def parse_ai_response(text):
     try:
         parts = text.split("|||BODY_START|||")
@@ -133,42 +133,42 @@ def parse_ai_response(text):
 def get_groq_article_seo(title, summary, link, internal_links_map, target_category):
     AVAILABLE_MODELS = ["llama-3.3-70b-versatile", "mixtral-8x7b-32768", "llama-3.1-8b-instant"]
     
-    # --- PROMPT: DINAMIS & UNIK HEADERS ---
+    # --- PROMPT: LONG-FORM JOURNALISM (1000+ Words) ---
     system_prompt = f"""
     You are Dave Harsya, a Senior Football Analyst for 'Soccer Daily'.
     TARGET CATEGORY: {target_category}
     
-    GOAL: Write a Data-Driven Analysis (1000+ words) ranking #1 on Google.
+    GOAL: Write a LONG-FORM, Deep-Dive Analysis article (MINIMUM 1200 WORDS).
     
     OUTPUT FORMAT (JSON):
     {{"title": "Punchy Headline (NO MARKDOWN)", "description": "SEO meta description", "category": "{target_category}", "main_keyword": "Entity Name", "lsi_keywords": ["keyword1"]}}
     |||BODY_START|||
     [Markdown Content]
 
-    # DYNAMIC STRUCTURE INSTRUCTIONS (VERY IMPORTANT):
-    - **DO NOT USE GENERIC HEADERS** like "Introduction", "Analysis", "Conclusion", or "Key Stats".
-    - **EVERY H2 MUST BE UNIQUE** and specific to the news topic.
-      - BAD: "Tactical Analysis"
-      - GOOD: "Why Real Madrid's High-Line Failed vs Villarreal"
-      - BAD: "Key Stats"
-      - GOOD: "Head-to-Head: Mbappe vs Yamal Data"
+    # LENGTH & DEPTH INSTRUCTIONS (CRITICAL):
+    - **TOTAL LENGTH: STRICTLY 1000-1500 WORDS.**
+    - Do not just summarize the news. You must EXPAND on every point using your general football knowledge.
+    - If the news is short, expand on: History, Manager Rivalries, Financial Implications, and Fan Culture.
 
-    # CONTENT FLOW:
-    1. **The Lead**: Hook the reader. Bold the **Main Keyword**.
-    2. **H2: Specific Tactical/Contextual Header**: Deep dive into the "Why" and "How".
-    3. **H2: Data-Driven Header (MANDATORY TABLE)**:
-       - Generate a Markdown Table here (e.g., Player Ratings, League Table, Last 5 Matches).
-       - Ensure the H2 title mentions what data is shown.
-    4. **🚀 Also Read**:
+    # EXPANDED CONTENT STRUCTURE:
+    1. **Introduction (150 words)**: The Hook, the context, and bold **Main Keyword**.
+    2. **H2: The Bigger Picture (200 words)**: Why does this matter? What is the historical context?
+    3. **H2: Tactical & Technical Analysis (300 words)**:
+       - Discuss formations, xG, key battles on the pitch.
+       - Use specific football terminology.
+    4. **📊 H2: Statistical Breakdown (MANDATORY MARKDOWN TABLE)**:
+       - Create a detailed table (e.g., Player Stats, Head-to-Head, League Standings).
+    5. **🚀 Also Read**:
        - "### 🚀 Also Read"
-       - List 3 links from: {internal_links_map}
-       - Format: "* [Title](URL)"
-    5. **H2: Reaction/Future Header**: Discuss quotes or future implications with a unique title.
-    6. **External Authority**: Include ONE natural link to a high-authority site (BBC/Transfermarkt).
-    7. **FAQ**: 3 Questions.
+       - List 3 links from: {internal_links_map} (Format: * [Title](URL))
+    6. **H2: Player/Manager Spotlight (200 words)**: Focus on ONE specific person involved and analyze their performance/comments deeply.
+    7. **H2: What This Means for the Season (150 words)**: Future implications, title race, or relegation battle impact.
+    8. **H2: Fan & Media Reaction**: Quotes and sentiment analysis.
+    9. **External Link**: Link to a high authority site (e.g., Transfermarkt) naturally in text.
+    10. **FAQ**: 3 Questions.
     
     # TONE:
-    - Analytical, Opinionated, Insightful.
+    - Detailed, Investigative, Professional. Avoid repetition.
     """
 
     user_prompt = f"""
@@ -176,7 +176,7 @@ def get_groq_article_seo(title, summary, link, internal_links_map, target_catego
     Summary: {summary}
     Link: {link}
     
-    Write now. Ensure ALL H2 HEADERS are unique to the story.
+    Write the 1200-word masterpiece now. Ensure unique H2 headers and deep analysis.
     """
 
     for api_key in GROQ_API_KEYS:
@@ -190,8 +190,8 @@ def get_groq_article_seo(title, summary, link, internal_links_map, target_catego
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt}
                     ],
-                    temperature=0.7, # Sedikit dinaikkan agar kreatif membuat Judul H2
-                    max_tokens=6500,
+                    temperature=0.7, 
+                    max_tokens=7000, # Dinaikkan agar cukup untuk 1200 kata
                 )
                 return completion.choices[0].message.content
             except RateLimitError: continue
@@ -264,7 +264,7 @@ draft: false
             
             if 'title' in data: save_link_to_memory(data['title'], slug)
             
-            print(f"   ✅ Published: {filename}")
+            print(f"   ✅ Published: {filename} (Long Form)")
             cat_success_count += 1
             total_generated += 1
             time.sleep(5)
