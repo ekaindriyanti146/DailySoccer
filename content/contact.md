@@ -7,34 +7,20 @@ layout: "page"
 
 We value feedback from our readers and partners. If you have a correction, a news tip, or an advertising inquiry, please use the secure form below. Our team typically responds within 24-48 hours.
 
-<!-- FORMULIR KONTAK PROFESIONAL (Tailwind Styled + Formspree Integrated) -->
 <div class="mt-8 p-8 bg-gray-50 border border-gray-200 rounded-lg shadow-sm">
-    
-    <!-- 
-      Form ini sudah terhubung ke akun Formspree Anda (mnjjerad).
-      Email pengunjung akan langsung masuk ke inbox Anda tanpa mengekspos alamat email Anda.
-    -->
     <form action="https://formspree.io/f/mnjjerad" method="POST" class="space-y-6">
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Nama -->
             <div>
                 <label for="name" class="block text-sm font-bold text-gray-700 uppercase tracking-wide mb-2">Name</label>
-                <input type="text" name="name" id="name" required 
-                       class="w-full px-4 py-3 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition"
-                       placeholder="Your Name">
+                <input type="text" name="name" id="name" required class="w-full px-4 py-3 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition" placeholder="Your Name">
             </div>
-            
-            <!-- Email (Wajib ada name="email" agar Formspree tahu mau balas kemana) -->
             <div>
                 <label for="email" class="block text-sm font-bold text-gray-700 uppercase tracking-wide mb-2">Email Address</label>
-                <input type="email" name="email" id="email" required 
-                       class="w-full px-4 py-3 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition"
-                       placeholder="name@example.com">
+                <input type="email" name="email" id="email" required class="w-full px-4 py-3 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition" placeholder="name@example.com">
             </div>
         </div>
 
-        <!-- Subject -->
         <div>
             <label for="subject" class="block text-sm font-bold text-gray-700 uppercase tracking-wide mb-2">Inquiry Type</label>
             <select name="subject" id="subject" class="w-full px-4 py-3 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:border-red-600 transition">
@@ -45,15 +31,11 @@ We value feedback from our readers and partners. If you have a correction, a new
             </select>
         </div>
 
-        <!-- Pesan -->
         <div>
             <label for="message" class="block text-sm font-bold text-gray-700 uppercase tracking-wide mb-2">Message</label>
-            <textarea name="message" id="message" rows="5" required
-                      class="w-full px-4 py-3 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition"
-                      placeholder="How can we help you?"></textarea>
+            <textarea name="message" id="message" rows="5" required class="w-full px-4 py-3 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition" placeholder="How can we help you?"></textarea>
         </div>
 
-        <!-- Tombol Kirim -->
         <button type="submit" class="w-full bg-red-600 text-white font-black uppercase tracking-widest py-4 rounded hover:bg-red-700 transition duration-300 shadow-lg cursor-pointer">
             Send Message
         </button>
