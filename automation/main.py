@@ -33,13 +33,11 @@ CONTENT_DIR = "content/articles"
 IMAGE_DIR = "static/images"
 DATA_DIR = "automation/data"
 MEMORY_FILE = f"{DATA_DIR}/link_memory.json"
-
-# --- E-E-A-T UPGRADE: Nama Penulis Spesifik ---
 AUTHOR_NAME = "Dave Harsya (Senior Analyst)"
 
 TARGET_PER_CATEGORY = 1 
 
-# --- MEMORY SYSTEM (SEO Linking) ---
+# --- MEMORY SYSTEM ---
 def load_link_memory():
     if not os.path.exists(MEMORY_FILE): return {}
     try:
@@ -61,7 +59,7 @@ def get_internal_links_context():
     if len(items) > 5: items = random.sample(items, 5)
     return json.dumps(dict(items))
 
-# --- ROBUST RSS FETCHER ---
+# --- RSS FETCHER ---
 def fetch_rss_feed(url):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -81,7 +79,7 @@ def clean_text(text):
     cleaned = cleaned.strip()
     return cleaned
 
-# --- DISCOVER-READY IMAGE ENGINE ---
+# --- IMAGE ENGINE ---
 def download_and_optimize_image(query, filename):
     clean_query = query.replace(" ", "+")
     image_url = f"https://tse2.mm.bing.net/th?q={clean_query}+football+match+action+photo&w=1280&h=720&c=7&rs=1&p=0"
@@ -99,7 +97,7 @@ def download_and_optimize_image(query, filename):
             
             width, height = img.size
             img = img.crop((width*0.1, height*0.1, width*0.9, height*0.9)) 
-            img = img.resize((1200, 675), Image.Resampling.LANCZOS) # 16:9 Perfect
+            img = img.resize((1200, 675), Image.Resampling.LANCZOS)
             
             img = ImageOps.mirror(img) 
             enhancer = ImageEnhance.Sharpness(img)
@@ -113,7 +111,7 @@ def download_and_optimize_image(query, filename):
     except: pass
     return False
 
-# --- AI WRITER ENGINE (100/100 SEO STRATEGY) ---
+# --- AI WRITER ENGINE (UNIQUE HEADER STRATEGY) ---
 def parse_ai_response(text):
     try:
         parts = text.split("|||BODY_START|||")
@@ -135,7 +133,7 @@ def parse_ai_response(text):
 def get_groq_article_seo(title, summary, link, internal_links_map, target_category):
     AVAILABLE_MODELS = ["llama-3.3-70b-versatile", "mixtral-8x7b-32768", "llama-3.1-8b-instant"]
     
-    # --- PROMPT LEVEL DEWA (DATA DRIVEN) ---
+    # --- PROMPT: DINAMIS & UNIK HEADERS ---
     system_prompt = f"""
     You are Dave Harsya, a Senior Football Analyst for 'Soccer Daily'.
     TARGET CATEGORY: {target_category}
@@ -147,25 +145,30 @@ def get_groq_article_seo(title, summary, link, internal_links_map, target_catego
     |||BODY_START|||
     [Markdown Content]
 
-    # CONTENT ARCHITECTURE (STRICT):
-    1. **The Lead**: Hook the reader. Bold the **Main Keyword** in the first sentence.
-    2. **Tactical Breakdown**: Use headers (H2). Discuss formation, xG, pressing traps.
-    3. **📊 Key Stats (MANDATORY TABLE)**:
-       - You MUST generate a Markdown Table here.
-       - Example: Compare Player Stats, League Table snapshot, or H2H History.
-       - Do NOT use bullet points here. Use a real Table.
+    # DYNAMIC STRUCTURE INSTRUCTIONS (VERY IMPORTANT):
+    - **DO NOT USE GENERIC HEADERS** like "Introduction", "Analysis", "Conclusion", or "Key Stats".
+    - **EVERY H2 MUST BE UNIQUE** and specific to the news topic.
+      - BAD: "Tactical Analysis"
+      - GOOD: "Why Real Madrid's High-Line Failed vs Villarreal"
+      - BAD: "Key Stats"
+      - GOOD: "Head-to-Head: Mbappe vs Yamal Data"
+
+    # CONTENT FLOW:
+    1. **The Lead**: Hook the reader. Bold the **Main Keyword**.
+    2. **H2: Specific Tactical/Contextual Header**: Deep dive into the "Why" and "How".
+    3. **H2: Data-Driven Header (MANDATORY TABLE)**:
+       - Generate a Markdown Table here (e.g., Player Ratings, League Table, Last 5 Matches).
+       - Ensure the H2 title mentions what data is shown.
     4. **🚀 Also Read**:
        - "### 🚀 Also Read"
        - List 3 links from: {internal_links_map}
        - Format: "* [Title](URL)"
-    5. **Expert Insight**: Quote a manager or player (simulated).
-    6. **External Authority**:
-       - Include ONE link to a high-authority site (Transfermarkt, Whoscored, or BBC Sport) as a reference for stats.
-       - Make it natural. Example: "According to data from [Transfermarkt](https://www.transfermarkt.com)..."
-    7. **FAQ**: 3 Questions for Voice Search schema.
+    5. **H2: Reaction/Future Header**: Discuss quotes or future implications with a unique title.
+    6. **External Authority**: Include ONE natural link to a high-authority site (BBC/Transfermarkt).
+    7. **FAQ**: 3 Questions.
     
     # TONE:
-    - Analytical, Objective, yet Engaging. No fluff.
+    - Analytical, Opinionated, Insightful.
     """
 
     user_prompt = f"""
@@ -173,7 +176,7 @@ def get_groq_article_seo(title, summary, link, internal_links_map, target_catego
     Summary: {summary}
     Link: {link}
     
-    Write now. Remember: INCLUDE A MARKDOWN TABLE.
+    Write now. Ensure ALL H2 HEADERS are unique to the story.
     """
 
     for api_key in GROQ_API_KEYS:
@@ -187,7 +190,7 @@ def get_groq_article_seo(title, summary, link, internal_links_map, target_catego
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt}
                     ],
-                    temperature=0.6, # Lebih rendah agar tabel data akurat
+                    temperature=0.7, # Sedikit dinaikkan agar kreatif membuat Judul H2
                     max_tokens=6500,
                 )
                 return completion.choices[0].message.content
